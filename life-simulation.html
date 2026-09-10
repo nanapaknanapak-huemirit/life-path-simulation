@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Life Path Simulation — Predict Your Future</title>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        :root{
+            --bg:#0a0e17;--surface:#111827;--surface2:#1e293b;
+            --border:#334155;--text:#e2e8f0;--dim:#64748b;
+            --cyan:#22d3ee;--green:#34d399;--yellow:#fbbf24;
+            --red:#f87171;--blue:#60a5fa;--purple:#a78bfa;
+            --pink:#f472b6;--orange:#fb923c;
+        }
+        body{
+            font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+            background:var(--bg);color:var(--text);min-height:100vh;
+            line-height:1.6;overflow-x:hidden;
+        }
+        .app{max-width:900px;margin:0 auto;padding:20px}
+
+        .hero{text-align:center;padding:40px 20px;position:relative}
+        .hero::before{
+            content:'';position:absolute;inset:0;
+            background:radial-gradient(ellipse at 50% 0%,rgba(34,211,238,.08) 0%,transparent 70%);
+            pointer-events:none;
+        }
+        .hero h1{
+            font-size:2.4rem;font-weight:800;
+            background:linear-gradient(135deg,var(--cyan),var(--purple));
+            -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+            background-clip:text;margin-bottom:8px;
+        }
+        .hero .tagline{color:var(--dim);font-size:1rem;margin-bottom:4px}
+        .hero .sub{color:var(--dim);font-size:.85rem;opacity:.7}
+
+        .progress-wrap{
+            position:sticky;top:0;z-index:100;
+            background:var(--bg);border-bottom:1px solid var(--border);
+            padding:12px 0;margin-bottom:20px;
+        }
+        .progress-inner{max-width:900px;margin:0 auto;padding:0 20px}
+        .progress-label{
+            display:flex;justify-content:space-between;
+            font-size:.75rem;color:var(--dim);margin-bottom:6px;
+        }
+        .progress-bar{height:6px;background:var(--surface2);border-radius:3px;overflow:hidden}
+        .progress-fill{
+            height:100%;border-radius:3px;transition:width .4s ease;
+            background:linear-gradient(90deg,var(--cyan),var(--purple));
+        }
+        .phase-dots{display:flex;gap:6px;justify-content:center;margin-top:8px}
+        .phase-dot{
+            width:10px;height:10px;border-radius:50%;border:2px solid var(--border);
+            transition:all .3s;
+        }
+        .phase-dot.done{background:var(--green);border-color:var(--green)}
+        .phase-dot.active{background:var(--cyan);border-color:var(--cyan);box-shadow:0 0 8px var(--cyan)}
+        .phase-dot.pending{background:transparent}
+
+        .phase-header{
+            text-align:center;padding:30px;margin:20px 0;
+            border:1px solid var(--border);border-radius:12px;
+            background:linear-gradient(135deg,rgba(34,211,238,.03),rgba(167,139,250,.03));
+        }
+        .phase-header h2{font-size:1.5rem;margin-bottom:6px}
+        .phase-header.edu h2{color:var(--cyan)}
+        .phase-header.econ h2{color:var(--green)}
+        .phase-header p{color:var(--dim);font-size:.9rem}
+
+        .scenario{
+            border:1px solid var(--border);border-radius:12px;
+            background:var(--surface);margin-bottom:20px;overflow:hidden;
+            transition:border-color .3s;
+        }
+        .scenario:hover{border-color:var(--cyan)}
+        .scenario-head{padding:20px 24px 16px;border-bottom:1px solid var(--border)}
+        .scenario-head h3{font-size:1.15rem;color:var(--cyan);margin-bottom:4px}
+        .scenario-head p{color:var(--dim);font-size:.9rem}
+
+        .choices{padding:16px;display:flex;flex-direction:column;gap:12px}
+        .choice-card{
+            display:flex;align-items:flex-start;gap:14px;
+            padding:16px;border-radius:10px;cursor:pointer;
+            border:2px solid var(--border);background:var(--surface2);
+            transition:all .25s;
+        }
+        .choice-card:hover{border-color:var(--cyan);transform:translateY(-2px);box-shadow:0 4px 20px rgba(34,211,238,.1)}
+        .choice-card.selected{border-color:var(--green);background:rgba(52,211,153,.08)}
+        .choice-card.disabled{pointer-events:none;opacity:.5}
+        .choice-num{
+            min-width:36px;height:36px;border-radius:50%;
+            display:flex;align-items:center;justify-content:center;
+            font-weight:700;font-size:.9rem;
+            background:var(--border);color:var(--text);flex-shrink:0;
+            transition:all .25s;
+        }
+        .choice-card.selected .choice-num{background:var(--green);color:var(--bg)}
+        .choice-body{flex:1}
+        .choice-body h4{font-size:1rem;margin-bottom:2px}
+        .choice-body .desc{color:var(--dim);font-size:.85rem;margin-bottom:6px}
+        .risk-badge{
+            display:inline-block;font-size:.7rem;font-weight:600;
+            padding:2px 8px;border-radius:4px;text-transform:uppercase;
+        }
+        .risk-badge.vlow,.risk-badge.low{background:rgba(52,211,153,.15);color:var(--green)}
+        .risk-badge.med{background:rgba(251,191,36,.15);color:var(--yellow)}
+        .risk-badge.high,.risk-badge.vhigh{background:rgba(248,113,113,.15);color:var(--red)}
+
+        .outcome{
+            margin-top:10px;padding:12px;border-radius:8px;
+            font-size:.85rem;line-height:1.5;
+            display:none;animation:fadeSlide .4s ease;
+        }
+        .outcome.show{display:block}
+        .outcome.success{background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.2);color:var(--green)}
+        .outcome.fail{background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.2);color:var(--yellow)}
+
+        @keyframes fadeSlide{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+
+        .results-section{
+            border:1px solid var(--border);border-radius:12px;
+            background:var(--surface);margin-bottom:20px;overflow:hidden;
+        }
+        .results-section .sec-head{
+            padding:16px 24px;border-bottom:1px solid var(--border);
+            font-weight:700;font-size:1rem;
+        }
+        .results-section .sec-body{padding:20px 24px}
+
+        .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px}
+        .stat-card{
+            padding:14px;border-radius:8px;background:var(--surface2);
+            border:1px solid var(--border);
+        }
+        .stat-card .label{font-size:.75rem;color:var(--dim);text-transform:uppercase;letter-spacing:.5px}
+        .stat-card .value{font-size:1.4rem;font-weight:700;margin-top:4px}
+        .stat-card .value.pos{color:var(--green)}
+        .stat-card .value.neg{color:var(--red)}
+        .stat-card .value.neu{color:var(--cyan)}
+
+        .bar-row{margin-bottom:12px}
+        .bar-label{display:flex;justify-content:space-between;font-size:.85rem;margin-bottom:4px}
+        .bar-track{height:8px;background:var(--surface2);border-radius:4px;overflow:hidden}
+        .bar-fill{height:100%;border-radius:4px;transition:width .6s ease}
+
+        .trajectory{margin-top:16px}
+        .traj-row{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+        .traj-label{min-width:60px;font-size:.8rem;color:var(--dim);text-align:right}
+        .traj-bar-wrap{flex:1;height:20px;background:var(--surface2);border-radius:4px;overflow:hidden}
+        .traj-bar{height:100%;border-radius:4px;transition:width .8s ease;display:flex;align-items:center;padding-left:8px;font-size:.75rem;font-weight:600}
+        .traj-bar.yr5{background:linear-gradient(90deg,rgba(34,211,238,.3),var(--cyan))}
+        .traj-bar.yr20{background:linear-gradient(90deg,rgba(52,211,153,.3),var(--green))}
+
+        .score-display{text-align:center;padding:30px 0}
+        .score-ring{position:relative;width:160px;height:160px;margin:0 auto 16px}
+        .score-ring svg{transform:rotate(-90deg)}
+        .score-ring circle{fill:none;stroke-width:10}
+        .score-ring .track{stroke:var(--surface2)}
+        .score-ring .fill{stroke:var(--cyan);stroke-linecap:round;transition:stroke-dashoffset 1s ease}
+        .score-num{
+            position:absolute;inset:0;display:flex;flex-direction:column;
+            align-items:center;justify-content:center;
+        }
+        .score-num .big{font-size:2.2rem;font-weight:800}
+        .score-num .small{font-size:.8rem;color:var(--dim)}
+        .grade{font-size:1.1rem;font-weight:700;margin-top:4px}
+        .grade.excellent{color:var(--green)}
+        .grade.good{color:var(--cyan)}
+        .grade.moderate{color:var(--yellow)}
+        .grade.atrisk{color:var(--red)}
+
+        .choices-table{width:100%;border-collapse:collapse;font-size:.85rem}
+        .choices-table th{text-align:left;padding:10px 12px;color:var(--dim);border-bottom:1px solid var(--border);font-weight:600}
+        .choices-table td{padding:10px 12px;border-bottom:1px solid var(--border)}
+        .choices-table tr:last-child td{border-bottom:none}
+        .cat-badge{
+            display:inline-block;font-size:.7rem;font-weight:600;
+            padding:2px 8px;border-radius:4px;
+        }
+        .cat-badge.edu{background:rgba(34,211,238,.15);color:var(--cyan)}
+        .cat-badge.econ{background:rgba(52,211,153,.15);color:var(--green)}
+
+        .strengths,.concerns,.recommendations{margin-bottom:16px}
+        .strengths h4{color:var(--green);margin-bottom:8px}
+        .concerns h4{color:var(--red);margin-bottom:8px}
+        .recommendations h4{color:var(--yellow);margin-bottom:8px}
+        .verdict-item{
+            display:flex;align-items:flex-start;gap:8px;
+            padding:6px 0;font-size:.9rem;
+        }
+        .verdict-item .icon{font-size:1rem;flex-shrink:0;margin-top:1px}
+
+        .btn{
+            display:inline-flex;align-items:center;justify-content:center;
+            padding:12px 28px;border-radius:8px;border:none;
+            font-size:1rem;font-weight:600;cursor:pointer;transition:all .2s;
+        }
+        .btn-primary{background:linear-gradient(135deg,var(--cyan),var(--blue));color:var(--bg)}
+        .btn-primary:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(34,211,238,.3)}
+        .btn-outline{background:transparent;border:1px solid var(--border);color:var(--text)}
+        .btn-outline:hover{border-color:var(--cyan);color:var(--cyan)}
+        .btn-center{text-align:center;margin:30px 0}
+
+        .log-entry{
+            display:flex;align-items:center;gap:10px;
+            padding:8px 12px;border-radius:6px;margin-bottom:6px;font-size:.85rem;
+        }
+        .log-entry .icon{font-size:1rem;flex-shrink:0}
+        .log-entry.success{background:rgba(52,211,153,.06);color:var(--green)}
+        .log-entry.partial{background:rgba(251,191,36,.06);color:var(--yellow)}
+        .log-entry strong{color:var(--text)}
+
+        .prediction{
+            padding:12px 16px;border-radius:8px;margin-top:10px;
+            font-size:.85rem;line-height:1.5;
+            background:rgba(96,165,250,.06);border:1px solid rgba(96,165,250,.15);
+            color:var(--blue);
+        }
+
+        .fade-in{animation:fadeSlide .4s ease both}
+        .stagger-1{animation-delay:.1s}
+        .stagger-2{animation-delay:.2s}
+        .stagger-3{animation-delay:.3s}
+
+        .hidden{display:none !important}
+        .confetti-piece{
+            position:fixed;width:8px;height:8px;
+            animation:confettiFall 1.5s ease-out forwards;
+            pointer-events:none;z-index:9999;
+        }
+        @keyframes confettiFall{
+            0%{transform:translateY(0) rotate(0);opacity:1}
+            100%{transform:translateY(100vh) rotate(720deg);opacity:0}
+        }
+
+        .kpi-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+        .kpi{
+            flex:1;min-width:100px;text-align:center;
+            padding:12px 8px;border-radius:8px;background:var(--surface2);
+        }
+        .kpi .num{font-size:1.6rem;font-weight:800}
+        .kpi .lbl{font-size:.7rem;color:var(--dim);text-transform:uppercase;margin-top:2px}
+
+        @media(max-width:600px){
+            .hero h1{font-size:1.6rem}
+            .stat-grid{grid-template-columns:1fr 1fr}
+            .scenario-head{padding:16px}
+            .choices{padding:12px}
+            .choice-card{flex-direction:column;gap:8px}
+        }
+    </style>
+</head>
+<body>
+<div class="app" id="app"></div>
+<script>
+const CONFIG={BASE_SALARY:35000,INFLATION:0.025,MARKET_RETURN:0.07,SAVINGS_GROWTH:0.03,
+EDUCATION_DEBT:{none:0,trade:15000,bachelors:45000,masters:70000,phd:55000},
+RISK_MULT:{very_low:0.95,low:0.85,medium:0.70,high:0.50,very_high:0.35}};
+
+const EDUCATION=[
+{title:"High School Completion",phase:"edu",desc:"You are 18. Do you finish high school or leave early?",
+choices:[
+{label:"Graduate High School",desc:"Complete your diploma and keep doors open.",prob:0.92,risk:"very_low",salMul:1.0,debt:0,sav:0,inv:0,sat:5,sec:10,grow:10,adapt:5,edu:"high_school",
+out:"You graduate with a diploma. This opens access to universities, trade schools, and most entry-level jobs. Your baseline earning potential is set at $35,000/year."},
+{label:"Drop Out",desc:"Leave school to work or explore other paths.",prob:0.35,risk:"high",salMul:0.70,debt:0,sav:2000,inv:0,sat:-10,sec:-15,grow:-20,adapt:-10,edu:"drop_out",
+out:"Without a diploma, your options narrow significantly. You earn roughly 30% less over your lifetime and face fewer career advancement opportunities."}]},
+{title:"Post-Secondary Education",phase:"edu",desc:"After high school, which path do you take?",
+choices:[
+{label:"University (4-year degree)",desc:"Pursue a bachelor's degree at a university.",prob:0.78,risk:"medium",salMul:1.45,debt:45000,sav:0,inv:0,sat:10,sec:5,grow:15,adapt:10,edu:"bachelors",
+out:"You invest 4 years and ~$45K in debt, but graduate with a bachelor's degree. Median salary jumps to ~$50,750. Long-term earnings premium: +$1.2M."},
+{label:"Trade School (1-2 years)",desc:"Learn a skilled trade: electrician, plumbing, HVAC.",prob:0.88,risk:"low",salMul:1.25,debt:15000,sav:0,inv:0,sat:12,sec:10,grow:5,adapt:5,edu:"trade",
+out:"In 1-2 years you become a certified tradesperson. Starting salary ~$43,750 with strong demand. Low debt, fast entry into the workforce."},
+{label:"Gap Year (work/travel)",desc:"Take a year off to gain life experience.",prob:0.60,risk:"medium",salMul:0.95,debt:0,sav:1500,inv:0,sat:8,sec:-5,grow:0,adapt:8,edu:"gap_year",
+out:"You gain life experience but delay education. Some people never return to school. You save a small amount but miss a year of career momentum."}]},
+{title:"Field of Study",phase:"edu",desc:"What do you focus your studies on?",
+choices:[
+{label:"STEM (Science, Tech, Engineering, Math)",desc:"Pursue a technical, high-demand field.",prob:0.80,risk:"low",salMul:1.35,debt:0,sav:0,inv:0,sat:5,sec:10,grow:15,adapt:12,
+out:"STEM skills are in high demand. Starting salary ~$68,000. Strong job market, clear career paths, and excellent remote work opportunities."},
+{label:"Business & Finance",desc:"Study business administration or finance.",prob:0.75,risk:"medium",salMul:1.20,debt:0,sav:0,inv:0,sat:3,sec:5,grow:10,adapt:8,
+out:"Business degrees offer versatility across industries. Starting salary ~$58,000. Good for entrepreneurship and management tracks."},
+{label:"Arts & Humanities",desc:"Pursue creative or liberal arts studies.",prob:0.65,risk:"high",salMul:0.90,debt:0,sav:0,inv:0,sat:12,sec:-5,grow:5,adapt:10,
+out:"Arts and humanities build critical thinking and creativity. Starting salary ~$42,000. Higher satisfaction for passionate people, fewer high-paying roles."}]},
+{title:"Graduate Education",phase:"edu",desc:"Should you pursue advanced degrees?",
+choices:[
+{label:"Master's Degree (1-2 years)",desc:"Specialize further with a master's degree.",prob:0.82,risk:"low",salMul:1.25,debt:70000,sav:0,inv:0,sat:8,sec:5,grow:10,adapt:5,edu:"masters",
+out:"A master's adds ~$15,000/year to your salary. Cost: ~$70K in additional debt. ROI breaks even in ~5 years. Opens senior positions."},
+{label:"PhD (4-6 years)",desc:"Commit to doctoral research.",prob:0.55,risk:"high",salMul:1.15,debt:55000,sav:0,inv:0,sat:15,sec:-5,grow:8,adapt:-5,edu:"phd",
+out:"A PhD is intellectually rewarding but long. Low stipend during studies, late career start. Academic job market is extremely competitive."},
+{label:"Enter Workforce Now",desc:"Skip grad school and start earning immediately.",prob:0.85,risk:"very_low",salMul:1.0,debt:0,sav:5000,inv:2000,sat:0,sec:5,grow:0,adapt:3,
+out:"You start earning 2-4 years earlier, building experience and savings. No additional debt. Experience often compensates for missing degrees."}]},
+{title:"Continuous Learning",phase:"edu",desc:"How do you invest in ongoing skill development?",
+choices:[
+{label:"Active Certifications & Courses",desc:"Regularly earn certifications and take courses.",prob:0.90,risk:"very_low",salMul:1.15,debt:2000,sav:0,inv:0,sat:8,sec:8,grow:12,adapt:15,
+out:"Continuous learning keeps you competitive. Annual cost ~$2K. Salary grows 15% faster. You adapt to industry changes and stay relevant longer."},
+{label:"Minimal Learning",desc:"Learn only when forced by job requirements.",prob:0.70,risk:"medium",salMul:0.95,debt:0,sav:500,inv:0,sat:-5,sec:-5,grow:-10,adapt:-10,
+out:"Skills stagnate over time. Your industry evolves but you don't. After 10 years, you become less competitive and more vulnerable to automation."}]}];
+
+const ECONOMICS=[
+{title:"Saving Habit",phase:"econ",desc:"How much of your income do you save each month?",
+choices:[
+{label:"Save 20% of Income",desc:"Aggressively save one-fifth of every paycheck.",prob:0.85,risk:"very_low",salMul:1.0,debt:0,sav:8000,inv:2000,sat:-3,sec:15,grow:5,adapt:5,
+out:"20% savings builds a strong safety net. Within 5 years you have ~$50K saved. Emergency fund covers 6+ months. Compound interest accelerates wealth."},
+{label:"Save 10% of Income",desc:"Save a moderate portion of your income.",prob:0.90,risk:"very_low",salMul:1.0,debt:0,sav:4000,inv:1000,sat:0,sec:8,grow:3,adapt:3,
+out:"10% savings is responsible but slower to grow. Emergency fund builds over 2 years. Comfortable lifestyle with moderate financial security."},
+{label:"Spend Freely",desc:"Live paycheck to paycheck, spend what you earn.",prob:0.40,risk:"very_high",salMul:1.0,debt:2000,sav:0,inv:0,sat:8,sec:-20,grow:-5,adapt:-8,
+out:"No savings means zero safety net. One emergency expense can cascade into debt. Lifestyle inflation keeps you trapped on the earnings treadmill."}]},
+{title:"Investment Timing",phase:"econ",desc:"When do you start investing for the future?",
+choices:[
+{label:"Invest Early (age 22)",desc:"Start investing immediately with compound interest.",prob:0.88,risk:"low",salMul:1.0,debt:0,sav:0,inv:5000,sat:5,sec:12,grow:10,adapt:5,
+out:"Starting at 22, compound interest is your superpower. $5K/year at 7% grows to ~$430K by 45. Starting early matters more than the amount."},
+{label:"Invest Later (age 32)",desc:"Wait 10 years, then start investing.",prob:0.75,risk:"medium",salMul:1.0,debt:0,sav:0,inv:5000,sat:0,sec:5,grow:5,adapt:3,
+out:"10 years of missed compounding costs ~$380K in potential growth. You invest more per month to catch up, but time is the most valuable asset."},
+{label:"Don't Invest",desc:"Keep money in a checking account or under a mattress.",prob:0.30,risk:"very_high",salMul:1.0,debt:1000,sav:0,inv:0,sat:0,sec:-15,grow:-10,adapt:-5,
+out:"Inflation eats your savings at ~2.5%/year. Over 20 years, your purchasing power drops by 40%. Retirement becomes a crisis."}]},
+{title:"Career Path",phase:"econ",desc:"How do you structure your working life?",
+choices:[
+{label:"Start a Business",desc:"Launch your own company or startup.",prob:0.35,risk:"very_high",salMul:0.50,debt:20000,sav:0,inv:0,sat:15,sec:-15,grow:20,adapt:12,
+out:"High risk, high reward. 65% of startups fail in the first 5 years. Successful founders earn 5-10x more than employees. Freedom and impact unmatched."},
+{label:"Stable Employment",desc:"Work for an established company with benefits.",prob:0.85,risk:"very_low",salMul:1.0,debt:0,sav:3000,inv:2000,sat:0,sec:10,grow:5,adapt:3,
+out:"Steady paycheck, health insurance, 401(k) match. Predictable career ladder. Less freedom but reliable income. Average tenure: 3-5 years per employer."},
+{label:"Freelancing",desc:"Work independently, client by client.",prob:0.55,risk:"high",salMul:1.10,debt:0,sav:1000,inv:1000,sat:10,sec:-10,grow:8,adapt:12,
+out:"Freedom and flexibility but income volatility. No employer benefits. Top freelancers out-earn employees; most struggle."}]},
+{title:"Housing Decision",phase:"econ",desc:"Where do you live in your late 20s?",
+choices:[
+{label:"Buy Property",desc:"Purchase a home with a mortgage.",prob:0.78,risk:"medium",salMul:1.0,debt:150000,sav:-10000,inv:15000,sat:10,sec:8,grow:5,adapt:-5,
+out:"Homeownership builds equity over time. Down payment drains savings, but the mortgage payment builds an asset. Property typically appreciates 3-5%/year."},
+{label:"Rent an Apartment",desc:"Continue renting, keep flexibility.",prob:0.85,risk:"very_low",salMul:1.0,debt:0,sav:2000,inv:3000,sat:3,sec:3,grow:5,adapt:10,
+out:"Renting preserves liquidity and flexibility. You can invest the difference. No maintenance costs, but no equity building either."},
+{label:"Live with Family",desc:"Stay with parents to save aggressively.",prob:0.90,risk:"very_low",salMul:1.0,debt:0,sav:8000,inv:5000,sat:-8,sec:12,grow:3,adapt:3,
+out:"Maximum savings rate. You can save $20K+/year. Financial independence comes faster, but social and personal growth may be limited."}]},
+{title:"Income Diversification",phase:"econ",desc:"How do you structure your income streams?",
+choices:[
+{label:"Multiple Side Income Streams",desc:"Build 2-3 additional income sources.",prob:0.50,risk:"medium",salMul:1.40,debt:0,sav:5000,inv:3000,sat:-5,sec:10,grow:10,adapt:12,
+out:"Multiple income streams provide resilience. If one dries up, others sustain you. Higher total income but more time commitment and complexity."},
+{label:"Single Focused Salary",desc:"Focus all energy on your main career.",prob:0.80,risk:"low",salMul:1.15,debt:0,sav:3000,inv:2000,sat:5,sec:5,grow:8,adapt:3,
+out:"Deep specialization can lead to promotions and expertise. Single point of failure, but mastery has compounding career benefits."}]}];
+
+const ALL=[...EDUCATION,...ECONOMICS];
+
+let state={current:-1,salary:CONFIG.BASE_SALARY,debt:0,savings:0,investments:0,
+satisfaction:50,security:50,growth:50,adaptability:50,education:"high_school",
+log:[],choices:[],age:22};
+
+const fmt=n=>{if(Math.abs(n)>=1e6)return"$"+(n/1e6).toFixed(1)+"M";if(Math.abs(n)>=1e3)return"$"+(n/1e3).toFixed(0)+"K";return"$"+n.toLocaleString()};
+const pct=n=>Math.round(n)+"%";
+const clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
+const rand=()=>Math.random();
+const riskClass=r=>r==="very_low"?"vlow":r==="low"?"low":r==="medium"?"med":r==="high"?"high":"vhigh";
+const riskLabel=r=>r.replace(/_/g," ");
+
+function applyChoice(ch){
+const success=rand()<ch.prob;const rm=CONFIG.RISK_MULT[ch.risk]||0.7;
+if(success){state.salary*=ch.salMul*rm;state.debt+=ch.debt*rm;state.savings+=ch.sav*rm;
+state.investments+=ch.inv*rm;state.satisfaction=clamp(state.satisfaction+ch.sat,0,100);
+state.security=clamp(state.security+ch.sec,0,100);state.growth=clamp(state.growth+ch.grow,0,100);
+state.adaptability=clamp(state.adaptability+ch.adapt,0,100);
+}else{const dm=rm*0.6;state.salary*=ch.salMul*dm;state.debt+=ch.debt*1.3;
+state.savings+=ch.sav*dm;state.investments+=ch.inv*dm;
+state.satisfaction=clamp(state.satisfaction+ch.sat*0.5,0,100);
+state.security=clamp(state.security+ch.sec*1.2,0,100);
+state.growth=clamp(state.growth+ch.grow*0.5,0,100);
+state.adaptability=clamp(state.adaptability+ch.adapt*0.5,0,100)}
+if(ch.edu)state.education=ch.edu;return success}
+
+function projectFuture(y){
+const sg=Math.pow(1.03,y);const infl=Math.pow(1+CONFIG.INFLATION,y);
+const ps=state.salary*sg;const pi=state.investments*Math.pow(1+CONFIG.MARKET_RETURN,y);
+const psav=state.savings*Math.pow(1+CONFIG.SAVINGS_GROWTH,y);
+const pd=state.debt*Math.max(0,1-0.10*y);
+return{salary:ps,real:ps/infl,netWorth:psav+pi-pd,debt:pd,savings:psav,investments:pi}}
+
+function lifeScore(){
+const nw=state.savings+state.investments-state.debt;
+const fin=clamp(50+nw/1000,0,100);
+return 0.30*fin+0.20*state.satisfaction+0.20*state.security+0.15*state.growth+0.15*state.adaptability}
+
+function getNetWorth(){return state.savings+state.investments-state.debt}
+
+function confetti(){
+const colors=["#22d3ee","#34d399","#fbbf24","#f87171","#a78bfa","#f472b6","#fb923c"];
+for(let i=0;i<40;i++){const el=document.createElement("div");
+el.className="confetti-piece";el.style.left=rand()*100+"vw";el.style.top="-10px";
+el.style.background=colors[Math.floor(rand()*colors.length)];
+el.style.animationDuration=(1+rand())+"s";el.style.animationDelay=(rand()*0.5)+"s";
+el.style.borderRadius=rand()>0.5?"50%":"2px";el.style.width=(5+rand()*8)+"px";
+el.style.height=(5+rand()*8)+"px";document.body.appendChild(el);
+setTimeout(()=>el.remove(),2500)}}
+
+const app=document.getElementById("app");
+
+function render(){
+if(state.current===-1)renderWelcome();
+else if(state.current<ALL.length)renderScenario();
+else renderResults();
+window.scrollTo({top:0,behavior:"smooth"})}
+
+function renderWelcome(){
+app.innerHTML=`
+<div class="hero"><h1>Life Path Simulation</h1>
+<div class="tagline">10 critical decisions &bull; 2 domains &bull; 1 life path</div>
+<div class="sub">This simulator models how education and economics choices compound over 20 years.</div></div>
+<div class="results-section" style="max-width:600px;margin:0 auto">
+<div class="sec-head" style="text-align:center">How It Works</div>
+<div class="sec-body">
+<div class="verdict-item"><span class="icon">📚</span><span><strong>5 Education Decisions</strong> — shape your skills, credentials, and career options</span></div>
+<div class="verdict-item"><span class="icon">💰</span><span><strong>5 Economics Decisions</strong> — shape your wealth, security, and financial freedom</span></div>
+<div class="verdict-item"><span class="icon">🎯</span><span><strong>Probability Engine</strong> — each choice has weighted success/failure outcomes</span></div>
+<div class="verdict-item"><span class="icon">📊</span><span><strong>Life Score</strong> — composite 0-100 score across 5 dimensions</span></div>
+<div class="verdict-item"><span class="icon">🔮</span><span><strong>20-Year Projection</strong> — see where your choices lead</span></div>
+</div></div>
+<div class="btn-center"><button class="btn btn-primary" onclick="startSimulation()">Begin Your Journey</button></div>`}
+
+function renderProgress(){
+const total=ALL.length;const done=state.current;const pctDone=(done/total*100).toFixed(0);
+let dots="";for(let i=0;i<total;i++){const cls=i<done?"done":i===done?"active":"pending";
+dots+=`<div class="phase-dot ${cls}"></div>`}
+return`<div class="progress-wrap"><div class="progress-inner">
+<div class="progress-label"><span>Progress</span><span>${done} / ${total} decisions</span></div>
+<div class="progress-bar"><div class="progress-fill" style="width:${pctDone}%"></div></div>
+<div class="phase-dots">${dots}</div></div></div>`}
+
+function renderScenario(){
+const sc=ALL[state.current];const isEdu=sc.phase==="edu";
+const phaseLabel=isEdu?"Education":"Economics";const total=ALL.length;
+let choicesHTML=sc.choices.map((ch,i)=>`
+<div class="choice-card fade-in stagger-${i+1}" data-idx="${i}" onclick="selectChoice(${state.current},${i})">
+<div class="choice-num">${i+1}</div>
+<div class="choice-body"><h4>${ch.label}</h4><div class="desc">${ch.desc}</div>
+<span class="risk-badge ${riskClass(ch.risk)}">Risk: ${riskLabel(ch.risk)}</span></div></div>`).join("");
+let outcomesHTML=sc.choices.map((ch,i)=>`<div class="outcome" id="outcome-${i}"></div>`).join("");
+let nextBtn="";if(state.current<total-1){
+const nextSc=ALL[state.current+1];const nextPhaseLabel=nextSc.phase==="edu"?"Education":"Economics";
+nextBtn=`<div class="btn-center"><button class="btn btn-primary" onclick="render()">Continue to ${nextPhaseLabel} Phase →</button></div>`}
+else{nextBtn=`<div class="btn-center"><button class="btn btn-primary" onclick="showResults()">See Your Results →</button></div>`}
+app.innerHTML=`${renderProgress()}
+<div class="phase-header ${isEdu?'edu':'econ'}"><h2>${phaseLabel} Phase</h2><p>Decision ${state.current+1} of ${total}</p></div>
+<div class="scenario"><div class="scenario-head"><h3>${sc.title}</h3><p>${sc.desc}</p></div>
+<div class="choices" id="choices-container">${choicesHTML}${outcomesHTML}</div>
+<div id="next-btn-wrap" class="hidden">${nextBtn}</div></div>`}
+
+function selectChoice(scIdx,chIdx){
+const sc=ALL[scIdx];const ch=sc.choices[chIdx];const success=applyChoice(ch);
+document.querySelectorAll(".choice-card").forEach((el,i)=>{el.classList.add("disabled");
+if(i===chIdx){el.classList.add("selected");el.classList.remove("disabled")}});
+const outcomeEl=document.getElementById(`outcome-${chIdx}`);
+if(outcomeEl){outcomeEl.className=`outcome show ${success?"success":"fail"}`;
+outcomeEl.innerHTML=`${success?"✓":"~"} <strong>${success?"Success!":"Partial outcome"}</strong> — ${ch.out}`}
+state.log.push({title:sc.title,choice:ch.label,success,category:sc.phase});
+state.choices.push({title:sc.title,choice:ch.label,success,category:sc.phase});
+document.getElementById("next-btn-wrap")?.classList.remove("hidden");
+if(success)confetti()}
+
+function showResults(){state.current=ALL.length;render()}
+
+function renderResults(){
+const nw=getNetWorth();const p5=projectFuture(5);const p20=projectFuture(20);
+const score=lifeScore();const scoreInt=Math.round(score);const maxNW=Math.max(p5.netWorth,p20.netWorth,1);
+let grade,gradeCls;if(score>=75){grade="EXCELLENT";gradeCls="excellent"}
+else if(score>=55){grade="GOOD";gradeCls="good"}else if(score>=35){grade="MODERATE";gradeCls="moderate"}
+else{grade="AT RISK";gradeCls="atrisk"}
+const circumference=2*Math.PI*68;const offset=circumference-(scoreInt/100)*circumference;
+const barColor=v=>v>=60?"var(--green)":v>=35?"var(--yellow)":"var(--red)";
+const strengths=[],concerns=[],recs=[];
+if(state.satisfaction>=60)strengths.push("High job satisfaction");
+else if(state.satisfaction<40)concerns.push("Low job satisfaction");
+if(state.security>=60)strengths.push("Strong financial security");
+else if(state.security<40)concerns.push("Weak financial safety net");
+if(nw>50000)strengths.push("Positive net worth trajectory");
+else if(nw<0)concerns.push("Negative net worth");
+if(state.growth>=60)strengths.push("Strong career growth potential");
+if(state.adaptability>=60)strengths.push("Highly adaptable skill set");
+if(state.debt>state.salary*2)recs.push("Your debt load is high. Prioritize debt reduction before investing further.");
+if(state.savings<(state.salary/12)*3)recs.push("Build an emergency fund covering 3-6 months of expenses.");
+if(state.investments<10000)recs.push("Consider starting investments — compound interest rewards early action.");
+if(state.adaptability<40)recs.push("Invest in learning to stay competitive in a changing job market.");
+
+app.innerHTML=`${renderProgress()}
+<div class="results-section fade-in"><div class="sec-head">Prediction Log</div><div class="sec-body">
+${state.log.map(l=>`<div class="log-entry ${l.success?'success':'partial'}">
+<span class="icon">${l.success?'✓':'~'}</span>
+<span>${l.title}: <strong>${l.choice}</strong> — ${l.success?'Success':'Partial'}</span></div>`).join("")}</div></div>
+
+<div class="results-section fade-in stagger-1"><div class="sec-head">Current Life State (Age ${state.age})</div><div class="sec-body">
+<div class="stat-grid">
+<div class="stat-card"><div class="label">Annual Salary</div><div class="value neu">${fmt(state.salary)}</div></div>
+<div class="stat-card"><div class="label">Total Debt</div><div class="value neg">${fmt(state.debt)}</div></div>
+<div class="stat-card"><div class="label">Savings</div><div class="value pos">${fmt(state.savings)}</div></div>
+<div class="stat-card"><div class="label">Investments</div><div class="value pos">${fmt(state.investments)}</div></div>
+<div class="stat-card"><div class="label">Net Worth</div><div class="value ${nw>=0?'pos':'neg'}">${fmt(nw)}</div></div>
+<div class="stat-card"><div class="label">Education</div><div class="value neu">${state.education.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase())}</div></div>
+</div>
+<div style="margin-top:20px">
+<div class="bar-row"><div class="bar-label"><span>Job Satisfaction</span><span>${pct(state.satisfaction)}</span></div>
+<div class="bar-track"><div class="bar-fill" style="width:${state.satisfaction}%;background:${barColor(state.satisfaction)}"></div></div></div>
+<div class="bar-row"><div class="bar-label"><span>Financial Security</span><span>${pct(state.security)}</span></div>
+<div class="bar-track"><div class="bar-fill" style="width:${state.security}%;background:${barColor(state.security)}"></div></div></div>
+<div class="bar-row"><div class="bar-label"><span>Career Growth</span><span>${pct(state.growth)}</span></div>
+<div class="bar-track"><div class="bar-fill" style="width:${state.growth}%;background:${barColor(state.growth)}"></div></div></div>
+<div class="bar-row"><div class="bar-label"><span>Skill Adaptability</span><span>${pct(state.adaptability)}</span></div>
+<div class="bar-track"><div class="bar-fill" style="width:${state.adaptability}%;background:${barColor(state.adaptability)}"></div></div></div>
+</div></div></div>
+
+<div class="results-section fade-in stagger-2"><div class="sec-head">Future Projections</div><div class="sec-body">
+<div class="kpi-row">
+<div class="kpi"><div class="num" style="color:var(--cyan)">${fmt(p5.salary)}</div><div class="lbl">5yr Salary</div></div>
+<div class="kpi"><div class="num" style="color:var(--cyan)">${fmt(p5.netWorth)}</div><div class="lbl">5yr Net Worth</div></div>
+<div class="kpi"><div class="num" style="color:var(--green)">${fmt(p20.salary)}</div><div class="lbl">20yr Salary</div></div>
+<div class="kpi"><div class="num" style="color:var(--green)">${fmt(p20.netWorth)}</div><div class="lbl">20yr Net Worth</div></div>
+</div>
+<div class="trajectory">
+<div class="traj-row"><div class="traj-label">Year 5</div>
+<div class="traj-bar-wrap"><div class="traj-bar yr5" style="width:${Math.max(2,p5.netWorth/maxNW*100)}%">${fmt(p5.netWorth)}</div></div></div>
+<div class="traj-row"><div class="traj-label">Year 20</div>
+<div class="traj-bar-wrap"><div class="traj-bar yr20" style="width:${Math.max(2,p20.netWorth/maxNW*100)}%">${fmt(p20.netWorth)}</div></div></div>
+</div></div></div>
+
+<div class="results-section fade-in stagger-3"><div class="sec-head">Life Score Assessment</div><div class="sec-body">
+<div class="score-display"><div class="score-ring">
+<svg width="160" height="160" viewBox="0 0 160 160">
+<circle class="track" cx="80" cy="80" r="68"/>
+<circle class="fill" cx="80" cy="80" r="68" stroke-dasharray="${circumference}" stroke-dashoffset="${offset}"/>
+</svg><div class="score-num"><div class="big">${scoreInt}</div><div class="small">out of 100</div></div></div>
+<div class="grade ${gradeCls}">${grade}</div>
+<p style="color:var(--dim);font-size:.85rem;margin-top:8px;max-width:500px;margin-left:auto;margin-right:auto">
+Based on your choices, your overall life trajectory is <strong>${grade.toLowerCase()}</strong>.
+Score: Financial 30%, Satisfaction 20%, Security 20%, Growth 15%, Adaptability 15%.</p></div></div></div>
+
+<div class="results-section fade-in"><div class="sec-head">All Decisions Summary</div><div class="sec-body" style="overflow-x:auto">
+<table class="choices-table"><thead><tr><th>#</th><th>Category</th><th>Choice</th><th>Outcome</th></tr></thead>
+<tbody>${state.choices.map((c,i)=>`<tr><td>${i+1}</td>
+<td><span class="cat-badge ${c.category}">${c.category==='edu'?'EDUCATION':'ECONOMICS'}</span></td>
+<td><strong>${c.choice}</strong></td>
+<td style="color:${c.success?'var(--green)':'var(--yellow)'}">${c.success?'Success':'Partial'}</td></tr>`).join("")}</tbody></table></div></div>
+
+<div class="results-section fade-in"><div class="sec-head">Final Verdict</div><div class="sec-body">
+${strengths.length?`<div class="strengths"><h4>Strengths</h4>${strengths.map(s=>`<div class="verdict-item"><span class="icon" style="color:var(--green)">✓</span><span>${s}</span></div>`).join("")}</div>`:""}
+${concerns.length?`<div class="concerns"><h4>Areas of Concern</h4>${concerns.map(s=>`<div class="verdict-item"><span class="icon" style="color:var(--red)">✗</span><span>${s}</span></div>`).join("")}</div>`:""}
+${recs.length?`<div class="recommendations"><h4>Recommendations</h4>${recs.map(s=>`<div class="verdict-item"><span class="icon" style="color:var(--yellow)">⚠</span><span>${s}</span></div>`).join("")}</div>`:""}
+<div class="prediction" style="margin-top:16px">Remember: these are probabilistic predictions. Your actual outcome depends on execution, timing, and opportunities you create.</div>
+</div></div>
+
+<div class="btn-center">
+<button class="btn btn-outline" onclick="resetSimulation()" style="margin-right:10px">Run Again</button>
+<button class="btn btn-primary" onclick="window.scrollTo({top:0,behavior:'smooth'})">Back to Top</button></div>`}
+
+function resetSimulation(){
+state={current:-1,salary:CONFIG.BASE_SALARY,debt:0,savings:0,investments:0,
+satisfaction:50,security:50,growth:50,adaptability:50,education:"high_school",
+log:[],choices:[],age:22};render()}
+
+function startSimulation(){state.current=0;render();setTimeout(confetti,300)}
+
+render();
+</script>
+</body>
+</html>
