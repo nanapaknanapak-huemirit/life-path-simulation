@@ -226,6 +226,10 @@
             background:rgba(167,139,250,.06);border:1px solid rgba(167,139,250,.15);
         }
         .pressure-hint{margin-top:10px;font-size:.8rem;color:var(--dim)}
+        .pressure-big .num.free{color:var(--green)}
+        .pressure-phase .sub{font-size:.7rem;color:var(--dim);margin-top:2px}
+        .stat-free{color:var(--green);font-weight:700}
+        .stat-press{color:var(--purple);font-weight:700}
 
         .strengths,.concerns,.recommendations{margin-bottom:16px}
         .strengths h4{color:var(--green);margin-bottom:8px}
@@ -307,16 +311,19 @@ RISK_MULT:{very_low:0.95,low:0.85,medium:0.70,high:0.50,very_high:0.35}};
 
 const SOCIAL_PRESSURE={commonTag:"👥 common choice",
 followed:"👥 Followed the common path — most people choose this",
-ownWayPrefix:"🌟 Went your own way — most people choose ",
-sectionTitle:"Social Pressure Analysis",
-bigLabel:"choices followed the common path",
+freeWillPrefix:"🕊️ Free choice — your own way. Most people choose ",
+sectionTitle:"Free Will & Social Pressure",
+pressureBigLabel:"choices followed the common path",
+freeWillBigLabel:"choices made of your own free will",
+freeShort:"free",pressureShort:"pressure",
+freeIcon:"🕊️",pressIcon:"👥",
 eduLabel:"Education",econLabel:"Economics",
-hint:"👥 common path · 🌟 own way — see each decision in the summary below.",
+hint:"🕊️ free choice · 👥 common path — see each decision in the summary below.",
 thresholds:{high:7,low:3},
 insights:{
-high:"Your path closely tracks the conventional route. Familiar and comfortable — but few contrarian bets. Social pressure did most of your steering.",
-mid:"A balanced mix: you followed the crowd where it suited you and broke rank where it mattered. Social pressure influenced you without driving you.",
-low:"You rarely took the common path — independent thinking shaped this journey. Just remember: norms exist for a reason, too."}};
+high:"Your path closely tracked the conventional route: few choices broke free of the common path. Familiar and comfortable — but social pressure, not free will, did most of your steering.",
+mid:"A balanced mix: you exercised free will where it mattered and went with the crowd where it suited you. Pressure influenced you without driving you.",
+low:"Most of your choices were made of your own free will — you rarely took the common path. Strong autonomy; just remember norms exist for a reason, too."}};
 
 const EDUCATION=[
 {title:"High School Completion",phase:"edu",desc:"You are 18. Do you finish high school or leave early?",
@@ -446,7 +453,7 @@ const chosen=sc.choices[p.choiceIdx];
 if(chosen.common)return SOCIAL_PRESSURE.followed;
 const common=sc.choices.find(c=>c.common);
 if(!common)return"";
-return SOCIAL_PRESSURE.ownWayPrefix+`"${common.label}"`}
+return SOCIAL_PRESSURE.freeWillPrefix+`"${common.label}"`}
 
 function pressureStats(){
 const s={followed:0,total:state.picks.length,
@@ -455,6 +462,9 @@ state.choices.forEach(c=>{
 const phase=c.category==="edu"?"edu":"econ";
 s[phase].total++;
 if(c.common){s.followed++;s[phase].followed++}});
+s.freeWill=s.total-s.followed;
+s.edu.freeWill=s.edu.total-s.edu.followed;
+s.econ.freeWill=s.econ.total-s.econ.followed;
 return s}
 
 function pressureInsight(s){
@@ -506,7 +516,7 @@ app.innerHTML=`
 <div class="verdict-item"><span class="icon">📚</span><span><strong>5 Education Decisions</strong> — shape your skills, credentials, and career options</span></div>
 <div class="verdict-item"><span class="icon">💰</span><span><strong>5 Economics Decisions</strong> — shape your wealth, security, and financial freedom</span></div>
 <div class="verdict-item"><span class="icon">🎯</span><span><strong>Probability Engine</strong> — each choice has weighted success/failure outcomes</span></div>
-<div class="verdict-item"><span class="icon">👥</span><span><strong>Social Pressure</strong> — see how often you follow the common path vs. your own way</span></div>
+<div class="verdict-item"><span class="icon">🕊️</span><span><strong>Free Will &amp; Pressure</strong> — see which choices you make freely vs. with the crowd</span></div>
 <div class="verdict-item"><span class="icon">📊</span><span><strong>Life Score</strong> — composite 0-100 score across 5 dimensions</span></div>
 <div class="verdict-item"><span class="icon">🔮</span><span><strong>20-Year Projection</strong> — see where your choices lead</span></div>
 </div></div>
@@ -611,16 +621,20 @@ recomputeState();render(false);
 if(success)confetti()}
 
 function renderSocialPressure(){
-const s=pressureStats();
-return`<div class="results-section fade-in"><div class="sec-head">${SOCIAL_PRESSURE.sectionTitle}</div><div class="sec-body">
+const s=pressureStats();const sp=SOCIAL_PRESSURE;
+const phaseCard=(label,d)=>`<div class="pressure-phase"><div class="lbl">${label}</div>
+<div class="num"><span class="stat-free">${d.freeWill} ${sp.freeShort}</span> · <span class="stat-press">${d.followed} ${sp.pressureShort}</span></div>
+<div class="sub">of ${d.total}</div></div>`;
+return`<div class="results-section fade-in"><div class="sec-head">${sp.sectionTitle}</div><div class="sec-body">
 <div class="pressure-stats">
+<div class="pressure-big"><div class="num free">${s.freeWill} <span class="of">/ ${s.total}</span></div>
+<div class="lbl">${sp.freeWillBigLabel}</div></div>
 <div class="pressure-big"><div class="num">${s.followed} <span class="of">/ ${s.total}</span></div>
-<div class="lbl">${SOCIAL_PRESSURE.bigLabel}</div></div>
-<div class="pressure-phase"><div class="lbl">${SOCIAL_PRESSURE.eduLabel}</div><div class="num">${s.edu.followed} / ${s.edu.total}</div></div>
-<div class="pressure-phase"><div class="lbl">${SOCIAL_PRESSURE.econLabel}</div><div class="num">${s.econ.followed} / ${s.econ.total}</div></div>
+<div class="lbl">${sp.pressureBigLabel}</div></div>
+${phaseCard(sp.eduLabel,s.edu)}${phaseCard(sp.econLabel,s.econ)}
 </div>
 <p class="pressure-insight">${pressureInsight(s)}</p>
-<p class="pressure-hint">${SOCIAL_PRESSURE.hint}</p>
+<p class="pressure-hint">${sp.hint}</p>
 </div></div>`}
 
 function renderResults(){
@@ -703,7 +717,7 @@ ${renderSocialPressure()}
 <table class="choices-table"><thead><tr><th>#</th><th>Category</th><th>Choice</th><th>Outcome</th></tr></thead>
 <tbody>${state.choices.map((c,i)=>`<tr class="clickable" title="Review &amp; correct this decision" onclick="enterCorrection(${i})"><td>${i+1}</td>
 <td><span class="cat-badge ${c.category}">${c.category==='edu'?'EDUCATION':'ECONOMICS'}</span></td>
-<td><strong>${c.choice}</strong>${c.editCount?`<span class="edit-badge">↻ ×${c.editCount}</span>`:""}<span class="pressure-badge" title="${c.common?"Common path":"Your own way"}">${c.common?"👥":"🌟"}</span></td>
+<td><strong>${c.choice}</strong>${c.editCount?`<span class="edit-badge">↻ ×${c.editCount}</span>`:""}<span class="pressure-badge" title="${c.common?"Common path":"Free choice"}">${c.common?SOCIAL_PRESSURE.pressIcon:SOCIAL_PRESSURE.freeIcon}</span></td>
 <td style="color:${c.success?'var(--green)':'var(--yellow)'}">${c.success?'Success':'Partial'}</td></tr>`).join("")}</tbody></table></div></div>
 
 <div class="results-section fade-in"><div class="sec-head">Final Verdict</div><div class="sec-body">

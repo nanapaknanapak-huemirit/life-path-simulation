@@ -29,9 +29,9 @@ unfold, and learn how choices compound.
 - 🔄 **Re-roll Partial Outcomes** - Retry a failed roll, then continue
 - 📝 **Correction Tracking** - Corrections counter and ↻ badges show exactly
   where you changed your path
-- 👥 **Social Pressure Analysis** - Every scenario has a "common path"; see how
-  many choices you made with the majority vs. your own way, per phase and
-  overall (observational — it never changes your odds or score)
+- 🕊️ **Free Will & Social Pressure** - Every scenario has a "common path";
+  results show how many choices you made freely (your own way) vs. with the
+  crowd, per phase and overall (observational — never changes your odds)
 - ⭐ **Confetti Rewards** - Celebrations at every milestone
 - 🎨 **Animated Feedback** - Vibrant results and verdicts
 - 📱 **Mobile Responsive** - Play on any device
@@ -44,8 +44,8 @@ unfold, and learn how choices compound.
 4. **Correct Anytime** - Click a green progress dot (or a row in the final
    summary) to revisit a decision — change the pick or re-roll a partial
    outcome, and later choices are re-asked
-5. **Read Your Results** - The Social Pressure Analysis shows how often you
-   followed the common path, and the verdict adds tailored recommendations
+5. **Read Your Results** - Free Will & Social Pressure shows how many choices
+   you made freely vs. with the crowd; the verdict adds recommendations
 6. **New Game** - Run another simulation and compare outcomes
 
 ## Languages
