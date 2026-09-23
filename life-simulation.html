@@ -55,7 +55,8 @@
             width:10px;height:10px;border-radius:50%;border:2px solid var(--border);
             transition:all .3s;
         }
-        .phase-dot.done{background:var(--green);border-color:var(--green)}
+        .phase-dot.done{background:var(--green);border-color:var(--green);cursor:pointer}
+        .phase-dot.done:hover{transform:scale(1.5);box-shadow:0 0 6px var(--green)}
         .phase-dot.active{background:var(--cyan);border-color:var(--cyan);box-shadow:0 0 8px var(--cyan)}
         .phase-dot.pending{background:transparent}
 
@@ -182,6 +183,18 @@
         .cat-badge.edu{background:rgba(34,211,238,.15);color:var(--cyan)}
         .cat-badge.econ{background:rgba(52,211,153,.15);color:var(--green)}
 
+        .edit-badge{
+            display:inline-block;font-size:.7rem;font-weight:600;
+            padding:2px 6px;border-radius:4px;vertical-align:middle;
+            background:rgba(167,139,250,.15);color:var(--purple);
+        }
+        .choices-table tr.clickable{cursor:pointer}
+        .choices-table tr.clickable:hover td{background:rgba(34,211,238,.06)}
+        .correction-banner{
+            margin:16px 24px 0;display:flex;align-items:center;
+            gap:10px;justify-content:space-between;flex-wrap:wrap;
+        }
+
         .strengths,.concerns,.recommendations{margin-bottom:16px}
         .strengths h4{color:var(--green);margin-bottom:8px}
         .concerns h4{color:var(--red);margin-bottom:8px}
@@ -249,6 +262,7 @@
             .scenario-head{padding:16px}
             .choices{padding:12px}
             .choice-card{flex-direction:column;gap:8px}
+            .correction-banner{margin:12px 16px 0}
         }
     </style>
 </head>
@@ -339,9 +353,10 @@ out:"Deep specialization can lead to promotions and expertise. Single point of f
 
 const ALL=[...EDUCATION,...ECONOMICS];
 
-let state={current:-1,salary:CONFIG.BASE_SALARY,debt:0,savings:0,investments:0,
+function initialState(){return{current:-1,salary:CONFIG.BASE_SALARY,debt:0,savings:0,investments:0,
 satisfaction:50,security:50,growth:50,adaptability:50,education:"high_school",
-log:[],choices:[],age:22};
+log:[],choices:[],age:22,picks:[],corrections:0,returnTo:null}}
+let state=initialState();
 
 const fmt=n=>{if(Math.abs(n)>=1e6)return"$"+(n/1e6).toFixed(1)+"M";if(Math.abs(n)>=1e3)return"$"+(n/1e3).toFixed(0)+"K";return"$"+n.toLocaleString()};
 const pct=n=>Math.round(n)+"%";
@@ -350,8 +365,10 @@ const rand=()=>Math.random();
 const riskClass=r=>r==="very_low"?"vlow":r==="low"?"low":r==="medium"?"med":r==="high"?"high":"vhigh";
 const riskLabel=r=>r.replace(/_/g," ");
 
-function applyChoice(ch){
-const success=rand()<ch.prob;const rm=CONFIG.RISK_MULT[ch.risk]||0.7;
+function rollSuccess(ch){return rand()<ch.prob}
+
+function applyChoiceEffects(ch,success){
+const rm=CONFIG.RISK_MULT[ch.risk]||0.7;
 if(success){state.salary*=ch.salMul*rm;state.debt+=ch.debt*rm;state.savings+=ch.sav*rm;
 state.investments+=ch.inv*rm;state.satisfaction=clamp(state.satisfaction+ch.sat,0,100);
 state.security=clamp(state.security+ch.sec,0,100);state.growth=clamp(state.growth+ch.grow,0,100);
@@ -362,7 +379,16 @@ state.satisfaction=clamp(state.satisfaction+ch.sat*0.5,0,100);
 state.security=clamp(state.security+ch.sec*1.2,0,100);
 state.growth=clamp(state.growth+ch.grow*0.5,0,100);
 state.adaptability=clamp(state.adaptability+ch.adapt*0.5,0,100)}
-if(ch.edu)state.education=ch.edu;return success}
+if(ch.edu)state.education=ch.edu}
+
+function recomputeState(){
+const keep={current:state.current,picks:state.picks,corrections:state.corrections,returnTo:state.returnTo};
+state=Object.assign(initialState(),keep);
+state.picks.forEach((p,i)=>{
+const sc=ALL[i];const ch=sc.choices[p.choiceIdx];
+applyChoiceEffects(ch,p.success);
+const entry={title:sc.title,choice:ch.label,success:p.success,category:sc.phase,editCount:p.editCount};
+state.log.push(entry);state.choices.push(entry)})}
 
 function projectFuture(y){
 const sg=Math.pow(1.03,y);const infl=Math.pow(1+CONFIG.INFLATION,y);
@@ -390,11 +416,11 @@ setTimeout(()=>el.remove(),2500)}}
 
 const app=document.getElementById("app");
 
-function render(){
+function render(scrollTop=true){
 if(state.current===-1)renderWelcome();
 else if(state.current<ALL.length)renderScenario();
 else renderResults();
-window.scrollTo({top:0,behavior:"smooth"})}
+if(scrollTop)window.scrollTo({top:0,behavior:"smooth"})}
 
 function renderWelcome(){
 app.innerHTML=`
@@ -418,46 +444,95 @@ app.innerHTML=`
 </div>`}
 
 function renderProgress(){
-const total=ALL.length;const done=state.current;const pctDone=(done/total*100).toFixed(0);
-let dots="";for(let i=0;i<total;i++){const cls=i<done?"done":i===done?"active":"pending";
-dots+=`<div class="phase-dot ${cls}"></div>`}
+const total=ALL.length;const frontier=state.picks.length;
+const pctDone=(frontier/total*100).toFixed(0);
+let dots="";
+for(let i=0;i<total;i++){
+const cls=i===state.current?"active":i<frontier?"done":"pending";
+const jump=i<frontier?` title="Review &amp; correct" onclick="enterCorrection(${i})"`:"";
+dots+=`<div class="phase-dot ${cls}"${jump}></div>`}
 return`<div class="progress-wrap"><div class="progress-inner">
-<div class="progress-label"><span>Progress</span><span>${done} / ${total} decisions</span></div>
+<div class="progress-label"><span>Progress</span><span>${frontier} / ${total} decisions</span></div>
 <div class="progress-bar"><div class="progress-fill" style="width:${pctDone}%"></div></div>
 <div class="phase-dots">${dots}</div></div></div>`}
 
 function renderScenario(){
 const sc=ALL[state.current];const isEdu=sc.phase==="edu";
 const phaseLabel=isEdu?"Education":"Economics";const total=ALL.length;
-let choicesHTML=sc.choices.map((ch,i)=>`
-<div class="choice-card fade-in stagger-${i+1}" data-idx="${i}" onclick="selectChoice(${state.current},${i})">
+const pick=state.picks[state.current];const correcting=state.returnTo!==null;
+let choicesHTML=sc.choices.map((ch,i)=>{
+const sel=pick&&pick.choiceIdx===i;
+let cls="choice-card fade-in stagger-"+(i+1);
+if(sel)cls+=" selected";else if(pick&&!correcting)cls+=" disabled";
+return`
+<div class="${cls}" data-idx="${i}" onclick="selectChoice(${state.current},${i})">
 <div class="choice-num">${i+1}</div>
 <div class="choice-body"><h4>${ch.label}</h4><div class="desc">${ch.desc}</div>
-<span class="risk-badge ${riskClass(ch.risk)}">Risk: ${riskLabel(ch.risk)}</span></div></div>`).join("");
-let outcomesHTML=sc.choices.map((ch,i)=>`<div class="outcome" id="outcome-${i}"></div>`).join("");
-let nextBtn="";if(state.current<total-1){
-const nextSc=ALL[state.current+1];const nextPhaseLabel=nextSc.phase==="edu"?"Education":"Economics";
-nextBtn=`<div class="btn-center"><button class="btn btn-primary" onclick="render()">Continue to ${nextPhaseLabel} Phase →</button></div>`}
-else{nextBtn=`<div class="btn-center"><button class="btn btn-primary" onclick="showResults()">See Your Results →</button></div>`}
+<span class="risk-badge ${riskClass(ch.risk)}">Risk: ${riskLabel(ch.risk)}</span></div></div>`}).join("");
+let outcomesHTML=sc.choices.map((ch,i)=>{
+if(pick&&pick.choiceIdx===i){const s=pick.success;
+return`<div class="outcome show ${s?"success":"fail"}" id="outcome-${i}">${s?"✓":"~"} <strong>${s?"Success!":"Partial outcome"}</strong> — ${ch.out}</div>`}
+return`<div class="outcome" id="outcome-${i}"></div>`}).join("");
+const nextLabel=state.current<total-1
+?`Continue to ${ALL[state.current+1].phase==="edu"?"Education":"Economics"} Phase →`
+:"See Your Results →";
+const showContinue=pick&&!correcting;
+const showReroll=pick&&!pick.success;
+const actionsHTML=`<div id="next-btn-wrap" class="btn-center${pick?"":" hidden"}">
+<button class="btn btn-outline${showReroll?"":" hidden"}" style="margin-right:10px" onclick="rerollOutcome(${state.current})">↻ Re-roll outcome</button>
+<button class="btn btn-primary${showContinue?"":" hidden"}" onclick="advanceDecision()">${nextLabel}</button></div>`;
+let bannerHTML="";
+if(correcting){
+const later=state.picks.length-(state.current+1);
+const impact=later>0
+?`Changing this decision discards your ${later} later ${later===1?"choice":"choices"} — you'll re-answer them`
+:"Pick a different option or re-roll to update this decision";
+bannerHTML=`<div class="prediction correction-banner">✏️ Reviewing Decision ${state.current+1} — ${impact}.
+<button class="btn btn-outline" onclick="cancelCorrection()" style="margin-left:auto;padding:6px 16px;font-size:.85rem;font-weight:600">Cancel</button></div>`}
 app.innerHTML=`${renderProgress()}
 <div class="phase-header ${isEdu?'edu':'econ'}"><h2>${phaseLabel} Phase</h2><p>Decision ${state.current+1} of ${total}</p></div>
 <div class="scenario"><div class="scenario-head"><h3>${sc.title}</h3><p>${sc.desc}</p></div>
+${bannerHTML}
 <div class="choices" id="choices-container">${choicesHTML}${outcomesHTML}</div>
-<div id="next-btn-wrap" class="hidden">${nextBtn}</div></div>`}
+${actionsHTML}</div>`}
+
+function enterCorrection(k){
+if(k>=state.picks.length)return;
+if(state.returnTo!==null&&state.current===k)return;
+if(state.returnTo===null)state.returnTo=state.current;
+state.current=k;render()}
+
+function cancelCorrection(){
+if(state.returnTo===null)return;
+state.current=state.returnTo;state.returnTo=null;render()}
+
+function advanceDecision(){state.current++;render()}
 
 function selectChoice(scIdx,chIdx){
-const sc=ALL[scIdx];const ch=sc.choices[chIdx];const success=applyChoice(ch);
-document.querySelectorAll(".choice-card").forEach((el,i)=>{el.classList.add("disabled");
-if(i===chIdx){el.classList.add("selected");el.classList.remove("disabled")}});
-const outcomeEl=document.getElementById(`outcome-${chIdx}`);
-if(outcomeEl){outcomeEl.className=`outcome show ${success?"success":"fail"}`;
-outcomeEl.innerHTML=`${success?"✓":"~"} <strong>${success?"Success!":"Partial outcome"}</strong> — ${ch.out}`}
-state.log.push({title:sc.title,choice:ch.label,success,category:sc.phase});
-state.choices.push({title:sc.title,choice:ch.label,success,category:sc.phase});
-document.getElementById("next-btn-wrap")?.classList.remove("hidden");
+const existing=state.picks[scIdx];
+if(existing&&existing.choiceIdx===chIdx)return;
+const ch=ALL[scIdx].choices[chIdx];
+const success=rollSuccess(ch);
+if(existing){
+state.corrections++;
+state.picks.length=scIdx;
+state.picks.push({choiceIdx:chIdx,success,editCount:existing.editCount+1});
+state.returnTo=null;
+}else{
+state.picks.push({choiceIdx:chIdx,success,editCount:0})}
+recomputeState();render(false);
 if(success)confetti()}
 
-function showResults(){state.current=ALL.length;render()}
+function rerollOutcome(scIdx){
+const p=state.picks[scIdx];
+if(!p||p.success)return;
+const success=rollSuccess(ALL[scIdx].choices[p.choiceIdx]);
+state.corrections++;
+if(state.picks.length>scIdx+1)state.picks.length=scIdx+1;
+state.picks[scIdx]={choiceIdx:p.choiceIdx,success,editCount:p.editCount+1};
+state.returnTo=null;
+recomputeState();render(false);
+if(success)confetti()}
 
 function renderResults(){
 const nw=getNetWorth();const p5=projectFuture(5);const p20=projectFuture(20);
@@ -482,10 +557,10 @@ if(state.investments<10000)recs.push("Consider starting investments — compound
 if(state.adaptability<40)recs.push("Invest in learning to stay competitive in a changing job market.");
 
 app.innerHTML=`${renderProgress()}
-<div class="results-section fade-in"><div class="sec-head">Prediction Log</div><div class="sec-body">
+<div class="results-section fade-in"><div class="sec-head" style="display:flex;justify-content:space-between;align-items:center"><span>Prediction Log</span><span class="edit-badge" style="margin:0">↻ ${state.corrections} correction${state.corrections===1?"":"s"}</span></div><div class="sec-body">
 ${state.log.map(l=>`<div class="log-entry ${l.success?'success':'partial'}">
 <span class="icon">${l.success?'✓':'~'}</span>
-<span>${l.title}: <strong>${l.choice}</strong> — ${l.success?'Success':'Partial'}</span></div>`).join("")}</div></div>
+<span>${l.title}: <strong>${l.choice}</strong> — ${l.success?'Success':'Partial'}${l.editCount?`<span class="edit-badge">↻ ×${l.editCount}</span>`:""}</span></div>`).join("")}</div></div>
 
 <div class="results-section fade-in stagger-1"><div class="sec-head">Current Life State (Age ${state.age})</div><div class="sec-body">
 <div class="stat-grid">
@@ -495,6 +570,7 @@ ${state.log.map(l=>`<div class="log-entry ${l.success?'success':'partial'}">
 <div class="stat-card"><div class="label">Investments</div><div class="value pos">${fmt(state.investments)}</div></div>
 <div class="stat-card"><div class="label">Net Worth</div><div class="value ${nw>=0?'pos':'neg'}">${fmt(nw)}</div></div>
 <div class="stat-card"><div class="label">Education</div><div class="value neu">${state.education.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase())}</div></div>
+<div class="stat-card"><div class="label">Corrections</div><div class="value neu">${state.corrections}</div></div>
 </div>
 <div style="margin-top:20px">
 <div class="bar-row"><div class="bar-label"><span>Job Satisfaction</span><span>${pct(state.satisfaction)}</span></div>
@@ -534,9 +610,9 @@ Score: Financial 30%, Satisfaction 20%, Security 20%, Growth 15%, Adaptability 1
 
 <div class="results-section fade-in"><div class="sec-head">All Decisions Summary</div><div class="sec-body" style="overflow-x:auto">
 <table class="choices-table"><thead><tr><th>#</th><th>Category</th><th>Choice</th><th>Outcome</th></tr></thead>
-<tbody>${state.choices.map((c,i)=>`<tr><td>${i+1}</td>
+<tbody>${state.choices.map((c,i)=>`<tr class="clickable" title="Review &amp; correct this decision" onclick="enterCorrection(${i})"><td>${i+1}</td>
 <td><span class="cat-badge ${c.category}">${c.category==='edu'?'EDUCATION':'ECONOMICS'}</span></td>
-<td><strong>${c.choice}</strong></td>
+<td><strong>${c.choice}</strong>${c.editCount?`<span class="edit-badge">↻ ×${c.editCount}</span>`:""}</td>
 <td style="color:${c.success?'var(--green)':'var(--yellow)'}">${c.success?'Success':'Partial'}</td></tr>`).join("")}</tbody></table></div></div>
 
 <div class="results-section fade-in"><div class="sec-head">Final Verdict</div><div class="sec-body">
@@ -556,10 +632,7 @@ ${recs.length?`<div class="recommendations"><h4>Recommendations</h4>${recs.map(s
 <div style="color:var(--dim);font-size:.75rem;margin-top:4px;word-break:break-all">nanapaknanapak-huemirit.github.io/life-path-simulation/life-simulation.html</div>
 </div></div>`}
 
-function resetSimulation(){
-state={current:-1,salary:CONFIG.BASE_SALARY,debt:0,savings:0,investments:0,
-satisfaction:50,security:50,growth:50,adaptability:50,education:"high_school",
-log:[],choices:[],age:22};render()}
+function resetSimulation(){state=initialState();render()}
 
 function startSimulation(){state.current=0;render();setTimeout(confetti,300)}
 

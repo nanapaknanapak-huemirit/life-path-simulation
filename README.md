@@ -24,6 +24,11 @@ unfold, and learn how choices compound.
 - 🔮 **20-Year Projection** - See the long-term compound effect of each choice
 - 📊 **Life Score** - Composite 0-100 score across 5 dimensions
 - 🛡️ **Risk & Probability** - Weighted success/failure outcomes per choice
+- ✏️ **Jump Back & Correct** - Click a completed progress dot or a summary row
+  to revisit that decision; later choices are honestly re-asked
+- 🔄 **Re-roll Partial Outcomes** - Retry a failed roll, then continue
+- 📝 **Correction Tracking** - Corrections counter and ↻ badges show exactly
+  where you changed your path
 - ⭐ **Confetti Rewards** - Celebrations at every milestone
 - 🎨 **Animated Feedback** - Vibrant results and verdicts
 - 📱 **Mobile Responsive** - Play on any device
@@ -33,8 +38,12 @@ unfold, and learn how choices compound.
 1. **Start** - Click "Begin Your Journey" to meet your simulated self
 2. **Make Choices** - Answer each education and economics scenario
 3. **Watch It Unfold** - See progress dots and the 20-year projection fill
-4. **Get Your Verdict** - Read tailored recommendations for your path
-5. **New Game** - Run another simulation and compare outcomes
+4. **Correct Anytime** - Click a green progress dot (or a row in the final
+   summary) to revisit a decision — change the pick or re-roll a partial
+   outcome, and later choices are re-asked
+5. **Get Your Verdict** - Read tailored recommendations for your path,
+   including how many corrections you made
+6. **New Game** - Run another simulation and compare outcomes
 
 ## Languages
 
