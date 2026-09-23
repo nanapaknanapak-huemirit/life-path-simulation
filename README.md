@@ -32,6 +32,9 @@ unfold, and learn how choices compound.
 - 🕊️ **Free Will & Social Pressure** - Every scenario has a "common path";
   results show how many choices you made freely (your own way) vs. with the
   crowd, per phase and overall (observational — never changes your odds)
+- 🧭 **External Pressure** - After each decision, declare whether family,
+  peers, financial need, or society drove it; results show which forces
+  shaped your path (observational — never changes your odds)
 - 🪪 **Named or Anonymous Runs** - Enter your name or get a generated
   anonymous one; results are labeled with it and each run is saved as local
   statistics (on this device only)
@@ -48,7 +51,8 @@ unfold, and learn how choices compound.
    summary) to revisit a decision — change the pick or re-roll a partial
    outcome, and later choices are re-asked
 5. **Read Your Results** - Free Will & Social Pressure shows how many choices
-   you made freely vs. with the crowd; Your Statistics tracks your runs on
+   you made freely vs. with the crowd; Choices Under External Pressure shows
+   who pushed each decision; Your Statistics tracks your runs on
    this device; the verdict adds recommendations
 6. **New Game** - Run another simulation and compare outcomes
 

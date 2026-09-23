@@ -231,6 +231,35 @@
         .stat-free{color:var(--green);font-weight:700}
         .stat-press{color:var(--purple);font-weight:700}
 
+        .pressure-ask{
+            margin-top:10px;padding-top:8px;
+            border-top:1px dashed rgba(167,139,250,.3);
+        }
+        .pressure-ask-label{
+            display:block;font-size:.75rem;font-weight:600;color:var(--dim);
+            text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;
+        }
+        .pressure-chips{display:flex;gap:6px;flex-wrap:wrap}
+        .pressure-chip{
+            display:inline-flex;align-items:center;gap:4px;
+            padding:5px 10px;border-radius:14px;cursor:pointer;
+            font-size:.75rem;font-weight:600;
+            border:1px solid var(--border);background:var(--surface2);
+            color:var(--dim);transition:all .2s;
+        }
+        .pressure-chip:hover{border-color:var(--purple);color:var(--text)}
+        .pressure-chip.active{background:rgba(167,139,250,.15);border-color:var(--purple);color:var(--purple)}
+        .src-grid{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+        .src-pill{
+            display:inline-flex;align-items:center;gap:6px;
+            padding:6px 12px;border-radius:14px;font-size:.8rem;
+            background:var(--surface2);border:1px solid var(--border);color:var(--text);
+        }
+        .src-pill strong{color:var(--purple)}
+        .src-badge{
+            display:inline-block;font-size:.75rem;margin-left:4px;vertical-align:middle;
+        }
+
         .name-input{
             width:100%;padding:12px 14px;border-radius:8px;font-size:1rem;
             background:var(--surface2);border:1px solid var(--border);
@@ -333,6 +362,29 @@ insights:{
 high:"Your path closely tracked the conventional route: few choices broke free of the common path. Familiar and comfortable — but social pressure, not free will, did most of your steering.",
 mid:"A balanced mix: you exercised free will where it mattered and went with the crowd where it suited you. Pressure influenced you without driving you.",
 low:"Most of your choices were made of your own free will — you rarely took the common path. Strong autonomy; just remember norms exist for a reason, too."}};
+
+const PRESSURE_LAYER={
+sectionTitle:"Choices Under External Pressure",
+sectionIcon:"🧭",
+askLabel:"What influenced this choice?",
+hint:"Declared pressure is who or what pushed you — distinct from the 👥 common path, which is what most people pick. Observational: it never changes your odds.",
+bigLabel:"choices made under external pressure",
+freeBigLabel:"choices driven by your own judgment",
+freeShort:"own",pressShort:"pressed",
+eduLabel:"Education",econLabel:"Economics",
+sources:[
+{id:"none",label:"My own decision",icon:"🕊️"},
+{id:"family",label:"Family",icon:"🏠"},
+{id:"peers",label:"Peers",icon:"🤝"},
+{id:"money",label:"Financial need",icon:"💰"},
+{id:"society",label:"Societal expectations",icon:"🌐"}],
+thresholds:{high:5,low:2},
+insights:{
+high:"External pressure steered most of your path. Family, peers, money, or societal expectations — rather than your own judgment — drove the majority of your decisions.",
+mid:"External pressure played a visible but limited role: some choices were pushed on you, others were clearly your own. A mixed path.",
+low:"Almost every choice was yours alone. External voices barely shaped your path — strong autonomy, for better or worse."},
+dominantNote:"Most frequent source: {label} ({n} of {total} pressured choices)."
+};
 
 const NAME_LAYER={
 title:"Who's walking this path?",
@@ -478,7 +530,7 @@ state=Object.assign(initialState(),keep);
 state.picks.forEach((p,i)=>{
 const sc=ALL[i];const ch=sc.choices[p.choiceIdx];
 applyChoiceEffects(ch,p.success);
-const entry={title:sc.title,choice:ch.label,success:p.success,category:sc.phase,editCount:p.editCount,common:!!ch.common};
+const entry={title:sc.title,choice:ch.label,success:p.success,category:sc.phase,editCount:p.editCount,common:!!ch.common,pressure:p.pressure||"none"};
 state.log.push(entry);state.choices.push(entry)})}
 
 function isCommonPick(scIdx){
@@ -511,6 +563,46 @@ const t=SOCIAL_PRESSURE.thresholds;
 return s.followed>=t.high?SOCIAL_PRESSURE.insights.high
 :s.followed<=t.low?SOCIAL_PRESSURE.insights.low
 :SOCIAL_PRESSURE.insights.mid}
+
+function pressureSource(id){
+return PRESSURE_LAYER.sources.find(s=>s.id===id)||PRESSURE_LAYER.sources[0]}
+
+function setPressure(scIdx,srcId){
+const p=state.picks[scIdx];
+if(!p||!PRESSURE_LAYER.sources.some(s=>s.id===srcId))return;
+const next=srcId===p.pressure?"none":srcId;
+p.pressure=next;
+recomputeState();render(false)}
+
+function pressureChipsHTML(scIdx,current){
+const chips=PRESSURE_LAYER.sources.map(src=>
+`<button type="button" class="pressure-chip${src.id===current?" active":""}" onclick="setPressure(${scIdx},'${src.id}')">${src.icon} ${esc(src.label)}</button>`).join("");
+return`<div class="pressure-ask"><span class="pressure-ask-label">${PRESSURE_LAYER.askLabel}</span><div class="pressure-chips">${chips}</div></div>`}
+
+function externalPressureStats(){
+const s={pressured:0,total:state.picks.length,
+family:0,peers:0,money:0,society:0,
+edu:{pressured:0,total:0},econ:{pressured:0,total:0}};
+state.choices.forEach(c=>{
+const phase=c.category==="edu"?"edu":"econ";
+s[phase].total++;
+if(c.pressure&&c.pressure!=="none"){s.pressured++;s[phase].pressured++;s[c.pressure]++}});
+s.own=s.total-s.pressured;
+s.edu.own=s.edu.total-s.edu.pressured;
+s.econ.own=s.econ.total-s.econ.pressured;
+return s}
+
+function externalPressureInsight(s){
+const t=PRESSURE_LAYER.thresholds;
+const base=s.pressured>=t.high?PRESSURE_LAYER.insights.high
+:s.pressured<=t.low?PRESSURE_LAYER.insights.low
+:PRESSURE_LAYER.insights.mid;
+if(!s.pressured)return base;
+const top=["family","peers","money","society"].reduce((a,b)=>s[b]>s[a]?b:a);
+if(!s[top])return base;
+return base+" "+PRESSURE_LAYER.dominantNote
+.replace("{label}",pressureSource(top).label)
+.replace("{n}",s[top]).replace("{total}",s.pressured)}
 
 function projectFuture(y){
 const sg=Math.pow(1.03,y);const infl=Math.pow(1+CONFIG.INFLATION,y);
@@ -556,6 +648,7 @@ app.innerHTML=`
 <div class="verdict-item"><span class="icon">💰</span><span><strong>5 Economics Decisions</strong> — shape your wealth, security, and financial freedom</span></div>
 <div class="verdict-item"><span class="icon">🎯</span><span><strong>Probability Engine</strong> — each choice has weighted success/failure outcomes</span></div>
 <div class="verdict-item"><span class="icon">🕊️</span><span><strong>Free Will &amp; Pressure</strong> — see which choices you make freely vs. with the crowd</span></div>
+<div class="verdict-item"><span class="icon">🧭</span><span><strong>External Pressure</strong> — declare whether family, peers, money, or society drove each choice</span></div>
 <div class="verdict-item"><span class="icon">📊</span><span><strong>Life Score</strong> — composite 0-100 score across 5 dimensions</span></div>
 <div class="verdict-item"><span class="icon">🔮</span><span><strong>20-Year Projection</strong> — see where your choices lead</span></div>
 </div></div>
@@ -621,7 +714,8 @@ return`
 let outcomesHTML=sc.choices.map((ch,i)=>{
 if(pick&&pick.choiceIdx===i){const s=pick.success;
 return`<div class="outcome show ${s?"success":"fail"}" id="outcome-${i}">${s?"✓":"~"} <strong>${s?"Success!":"Partial outcome"}</strong> — ${ch.out}
-<div class="pressure-line">${pressureLine(state.current)}</div></div>`}
+<div class="pressure-line">${pressureLine(state.current)}</div>
+${pressureChipsHTML(state.current,pick.pressure||"none")}</div>`}
 return`<div class="outcome" id="outcome-${i}"></div>`}).join("");
 const nextLabel=state.current<total-1
 ?`Continue to ${ALL[state.current+1].phase==="edu"?"Education":"Economics"} Phase →`
@@ -666,10 +760,10 @@ const success=rollSuccess(ch);
 if(existing){
 state.corrections++;
 state.picks.length=scIdx;
-state.picks.push({choiceIdx:chIdx,success,editCount:existing.editCount+1});
+state.picks.push({choiceIdx:chIdx,success,editCount:existing.editCount+1,pressure:"none"});
 state.returnTo=null;
 }else{
-state.picks.push({choiceIdx:chIdx,success,editCount:0})}
+state.picks.push({choiceIdx:chIdx,success,editCount:0,pressure:"none"})}
 recomputeState();render(false);
 if(success)confetti()}
 
@@ -679,7 +773,7 @@ if(!p||p.success)return;
 const success=rollSuccess(ALL[scIdx].choices[p.choiceIdx]);
 state.corrections++;
 if(state.picks.length>scIdx+1)state.picks.length=scIdx+1;
-state.picks[scIdx]={choiceIdx:p.choiceIdx,success,editCount:p.editCount+1};
+state.picks[scIdx]={choiceIdx:p.choiceIdx,success,editCount:p.editCount+1,pressure:p.pressure||"none"};
 state.returnTo=null;
 recomputeState();render(false);
 if(success)confetti()}
@@ -723,6 +817,26 @@ ${phaseCard(sp.eduLabel,s.edu)}${phaseCard(sp.econLabel,s.econ)}
 </div>
 <p class="pressure-insight">${pressureInsight(s)}</p>
 <p class="pressure-hint">${sp.hint}</p>
+</div></div>`}
+
+function renderExternalPressure(){
+const s=externalPressureStats();const pl=PRESSURE_LAYER;
+const srcPills=pl.sources.filter(src=>src.id!=="none").map(src=>
+`<div class="src-pill">${src.icon} ${esc(src.label)} <strong>${s[src.id]}</strong></div>`).join("");
+const phaseCard=(label,d)=>`<div class="pressure-phase"><div class="lbl">${label}</div>
+<div class="num"><span class="stat-free">${d.own} ${pl.freeShort}</span> · <span class="stat-press">${d.pressured} ${pl.pressShort}</span></div>
+<div class="sub">of ${d.total}</div></div>`;
+return`<div class="results-section fade-in"><div class="sec-head">${pl.sectionIcon} ${pl.sectionTitle}</div><div class="sec-body">
+<div class="pressure-stats">
+<div class="pressure-big"><div class="num">${s.pressured} <span class="of">/ ${s.total}</span></div>
+<div class="lbl">${pl.bigLabel}</div></div>
+<div class="pressure-big"><div class="num free">${s.own} <span class="of">/ ${s.total}</span></div>
+<div class="lbl">${pl.freeBigLabel}</div></div>
+${phaseCard(pl.eduLabel,s.edu)}${phaseCard(pl.econLabel,s.econ)}
+</div>
+<div class="src-grid">${srcPills}</div>
+<p class="pressure-insight">${externalPressureInsight(s)}</p>
+<p class="pressure-hint">${pl.hint}</p>
 </div></div>`}
 
 function renderYourStatistics(){
@@ -817,13 +931,15 @@ Score: Financial 30%, Satisfaction 20%, Security 20%, Growth 15%, Adaptability 1
 
 ${renderSocialPressure()}
 
+${renderExternalPressure()}
+
 ${renderYourStatistics()}
 
 <div class="results-section fade-in"><div class="sec-head">All Decisions Summary</div><div class="sec-body" style="overflow-x:auto">
 <table class="choices-table"><thead><tr><th>#</th><th>Category</th><th>Choice</th><th>Outcome</th></tr></thead>
 <tbody>${state.choices.map((c,i)=>`<tr class="clickable" title="Review &amp; correct this decision" onclick="enterCorrection(${i})"><td>${i+1}</td>
 <td><span class="cat-badge ${c.category}">${c.category==='edu'?'EDUCATION':'ECONOMICS'}</span></td>
-<td><strong>${c.choice}</strong>${c.editCount?`<span class="edit-badge">↻ ×${c.editCount}</span>`:""}<span class="pressure-badge" title="${c.common?"Common path":"Free choice"}">${c.common?SOCIAL_PRESSURE.pressIcon:SOCIAL_PRESSURE.freeIcon}</span></td>
+<td><strong>${c.choice}</strong>${c.editCount?`<span class="edit-badge">↻ ×${c.editCount}</span>`:""}<span class="pressure-badge" title="${c.common?"Common path":"Free choice"}">${c.common?SOCIAL_PRESSURE.pressIcon:SOCIAL_PRESSURE.freeIcon}</span>${c.pressure&&c.pressure!=="none"?`<span class="src-badge" title="Driven by: ${esc(pressureSource(c.pressure).label)}">${pressureSource(c.pressure).icon}</span>`:""}</td>
 <td style="color:${c.success?'var(--green)':'var(--yellow)'}">${c.success?'Success':'Partial'}</td></tr>`).join("")}</tbody></table></div></div>
 
 <div class="results-section fade-in"><div class="sec-head">Final Verdict</div><div class="sec-body">
