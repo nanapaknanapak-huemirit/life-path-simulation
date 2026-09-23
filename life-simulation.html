@@ -195,6 +195,38 @@
             gap:10px;justify-content:space-between;flex-wrap:wrap;
         }
 
+        .pressure-tag{
+            display:inline-block;font-size:.7rem;font-weight:600;
+            padding:2px 8px;border-radius:4px;text-transform:uppercase;
+            background:rgba(167,139,250,.12);color:var(--purple);margin-left:6px;
+        }
+        .pressure-line{
+            margin-top:8px;padding-top:8px;font-weight:600;
+            border-top:1px dashed rgba(167,139,250,.3);
+        }
+        .pressure-badge{display:inline-block;font-size:.75rem;margin-left:6px}
+        .pressure-stats{display:flex;gap:14px;flex-wrap:wrap;align-items:stretch;margin-bottom:14px}
+        .pressure-big{
+            flex:1;min-width:200px;padding:16px;border-radius:8px;text-align:center;
+            background:var(--surface2);border:1px solid var(--border);
+        }
+        .pressure-big .num{font-size:2rem;font-weight:800;color:var(--purple)}
+        .pressure-big .num .of{font-size:1.1rem;color:var(--dim);font-weight:600}
+        .pressure-big .lbl,.pressure-phase .lbl{
+            font-size:.75rem;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;
+        }
+        .pressure-phase{
+            min-width:110px;padding:16px;border-radius:8px;text-align:center;
+            background:var(--surface2);border:1px solid var(--border);
+        }
+        .pressure-phase .num{font-size:1.3rem;font-weight:700;color:var(--text);margin-top:4px}
+        .pressure-insight{
+            font-size:.9rem;line-height:1.6;color:var(--text);
+            padding:12px 16px;border-radius:8px;
+            background:rgba(167,139,250,.06);border:1px solid rgba(167,139,250,.15);
+        }
+        .pressure-hint{margin-top:10px;font-size:.8rem;color:var(--dim)}
+
         .strengths,.concerns,.recommendations{margin-bottom:16px}
         .strengths h4{color:var(--green);margin-bottom:8px}
         .concerns h4{color:var(--red);margin-bottom:8px}
@@ -273,16 +305,29 @@ const CONFIG={BASE_SALARY:35000,INFLATION:0.025,MARKET_RETURN:0.07,SAVINGS_GROWT
 EDUCATION_DEBT:{none:0,trade:15000,bachelors:45000,masters:70000,phd:55000},
 RISK_MULT:{very_low:0.95,low:0.85,medium:0.70,high:0.50,very_high:0.35}};
 
+const SOCIAL_PRESSURE={commonTag:"👥 common choice",
+followed:"👥 Followed the common path — most people choose this",
+ownWayPrefix:"🌟 Went your own way — most people choose ",
+sectionTitle:"Social Pressure Analysis",
+bigLabel:"choices followed the common path",
+eduLabel:"Education",econLabel:"Economics",
+hint:"👥 common path · 🌟 own way — see each decision in the summary below.",
+thresholds:{high:7,low:3},
+insights:{
+high:"Your path closely tracks the conventional route. Familiar and comfortable — but few contrarian bets. Social pressure did most of your steering.",
+mid:"A balanced mix: you followed the crowd where it suited you and broke rank where it mattered. Social pressure influenced you without driving you.",
+low:"You rarely took the common path — independent thinking shaped this journey. Just remember: norms exist for a reason, too."}};
+
 const EDUCATION=[
 {title:"High School Completion",phase:"edu",desc:"You are 18. Do you finish high school or leave early?",
 choices:[
-{label:"Graduate High School",desc:"Complete your diploma and keep doors open.",prob:0.92,risk:"very_low",salMul:1.0,debt:0,sav:0,inv:0,sat:5,sec:10,grow:10,adapt:5,edu:"high_school",
+{label:"Graduate High School",desc:"Complete your diploma and keep doors open.",prob:0.92,risk:"very_low",common:true,salMul:1.0,debt:0,sav:0,inv:0,sat:5,sec:10,grow:10,adapt:5,edu:"high_school",
 out:"You graduate with a diploma. This opens access to universities, trade schools, and most entry-level jobs. Your baseline earning potential is set at $35,000/year."},
 {label:"Drop Out",desc:"Leave school to work or explore other paths.",prob:0.35,risk:"high",salMul:0.70,debt:0,sav:2000,inv:0,sat:-10,sec:-15,grow:-20,adapt:-10,edu:"drop_out",
 out:"Without a diploma, your options narrow significantly. You earn roughly 30% less over your lifetime and face fewer career advancement opportunities."}]},
 {title:"Post-Secondary Education",phase:"edu",desc:"After high school, which path do you take?",
 choices:[
-{label:"University (4-year degree)",desc:"Pursue a bachelor's degree at a university.",prob:0.78,risk:"medium",salMul:1.45,debt:45000,sav:0,inv:0,sat:10,sec:5,grow:15,adapt:10,edu:"bachelors",
+{label:"University (4-year degree)",desc:"Pursue a bachelor's degree at a university.",prob:0.78,risk:"medium",common:true,salMul:1.45,debt:45000,sav:0,inv:0,sat:10,sec:5,grow:15,adapt:10,edu:"bachelors",
 out:"You invest 4 years and ~$45K in debt, but graduate with a bachelor's degree. Median salary jumps to ~$50,750. Long-term earnings premium: +$1.2M."},
 {label:"Trade School (1-2 years)",desc:"Learn a skilled trade: electrician, plumbing, HVAC.",prob:0.88,risk:"low",salMul:1.25,debt:15000,sav:0,inv:0,sat:12,sec:10,grow:5,adapt:5,edu:"trade",
 out:"In 1-2 years you become a certified tradesperson. Starting salary ~$43,750 with strong demand. Low debt, fast entry into the workforce."},
@@ -292,7 +337,7 @@ out:"You gain life experience but delay education. Some people never return to s
 choices:[
 {label:"STEM (Science, Tech, Engineering, Math)",desc:"Pursue a technical, high-demand field.",prob:0.80,risk:"low",salMul:1.35,debt:0,sav:0,inv:0,sat:5,sec:10,grow:15,adapt:12,
 out:"STEM skills are in high demand. Starting salary ~$68,000. Strong job market, clear career paths, and excellent remote work opportunities."},
-{label:"Business & Finance",desc:"Study business administration or finance.",prob:0.75,risk:"medium",salMul:1.20,debt:0,sav:0,inv:0,sat:3,sec:5,grow:10,adapt:8,
+{label:"Business & Finance",desc:"Study business administration or finance.",prob:0.75,risk:"medium",common:true,salMul:1.20,debt:0,sav:0,inv:0,sat:3,sec:5,grow:10,adapt:8,
 out:"Business degrees offer versatility across industries. Starting salary ~$58,000. Good for entrepreneurship and management tracks."},
 {label:"Arts & Humanities",desc:"Pursue creative or liberal arts studies.",prob:0.65,risk:"high",salMul:0.90,debt:0,sav:0,inv:0,sat:12,sec:-5,grow:5,adapt:10,
 out:"Arts and humanities build critical thinking and creativity. Starting salary ~$42,000. Higher satisfaction for passionate people, fewer high-paying roles."}]},
@@ -302,13 +347,13 @@ choices:[
 out:"A master's adds ~$15,000/year to your salary. Cost: ~$70K in additional debt. ROI breaks even in ~5 years. Opens senior positions."},
 {label:"PhD (4-6 years)",desc:"Commit to doctoral research.",prob:0.55,risk:"high",salMul:1.15,debt:55000,sav:0,inv:0,sat:15,sec:-5,grow:8,adapt:-5,edu:"phd",
 out:"A PhD is intellectually rewarding but long. Low stipend during studies, late career start. Academic job market is extremely competitive."},
-{label:"Enter Workforce Now",desc:"Skip grad school and start earning immediately.",prob:0.85,risk:"very_low",salMul:1.0,debt:0,sav:5000,inv:2000,sat:0,sec:5,grow:0,adapt:3,
+{label:"Enter Workforce Now",desc:"Skip grad school and start earning immediately.",prob:0.85,risk:"very_low",common:true,salMul:1.0,debt:0,sav:5000,inv:2000,sat:0,sec:5,grow:0,adapt:3,
 out:"You start earning 2-4 years earlier, building experience and savings. No additional debt. Experience often compensates for missing degrees."}]},
 {title:"Continuous Learning",phase:"edu",desc:"How do you invest in ongoing skill development?",
 choices:[
 {label:"Active Certifications & Courses",desc:"Regularly earn certifications and take courses.",prob:0.90,risk:"very_low",salMul:1.15,debt:2000,sav:0,inv:0,sat:8,sec:8,grow:12,adapt:15,
 out:"Continuous learning keeps you competitive. Annual cost ~$2K. Salary grows 15% faster. You adapt to industry changes and stay relevant longer."},
-{label:"Minimal Learning",desc:"Learn only when forced by job requirements.",prob:0.70,risk:"medium",salMul:0.95,debt:0,sav:500,inv:0,sat:-5,sec:-5,grow:-10,adapt:-10,
+{label:"Minimal Learning",desc:"Learn only when forced by job requirements.",prob:0.70,risk:"medium",common:true,salMul:0.95,debt:0,sav:500,inv:0,sat:-5,sec:-5,grow:-10,adapt:-10,
 out:"Skills stagnate over time. Your industry evolves but you don't. After 10 years, you become less competitive and more vulnerable to automation."}]}];
 
 const ECONOMICS=[
@@ -316,7 +361,7 @@ const ECONOMICS=[
 choices:[
 {label:"Save 20% of Income",desc:"Aggressively save one-fifth of every paycheck.",prob:0.85,risk:"very_low",salMul:1.0,debt:0,sav:8000,inv:2000,sat:-3,sec:15,grow:5,adapt:5,
 out:"20% savings builds a strong safety net. Within 5 years you have ~$50K saved. Emergency fund covers 6+ months. Compound interest accelerates wealth."},
-{label:"Save 10% of Income",desc:"Save a moderate portion of your income.",prob:0.90,risk:"very_low",salMul:1.0,debt:0,sav:4000,inv:1000,sat:0,sec:8,grow:3,adapt:3,
+{label:"Save 10% of Income",desc:"Save a moderate portion of your income.",prob:0.90,risk:"very_low",common:true,salMul:1.0,debt:0,sav:4000,inv:1000,sat:0,sec:8,grow:3,adapt:3,
 out:"10% savings is responsible but slower to grow. Emergency fund builds over 2 years. Comfortable lifestyle with moderate financial security."},
 {label:"Spend Freely",desc:"Live paycheck to paycheck, spend what you earn.",prob:0.40,risk:"very_high",salMul:1.0,debt:2000,sav:0,inv:0,sat:8,sec:-20,grow:-5,adapt:-8,
 out:"No savings means zero safety net. One emergency expense can cascade into debt. Lifestyle inflation keeps you trapped on the earnings treadmill."}]},
@@ -324,7 +369,7 @@ out:"No savings means zero safety net. One emergency expense can cascade into de
 choices:[
 {label:"Invest Early (age 22)",desc:"Start investing immediately with compound interest.",prob:0.88,risk:"low",salMul:1.0,debt:0,sav:0,inv:5000,sat:5,sec:12,grow:10,adapt:5,
 out:"Starting at 22, compound interest is your superpower. $5K/year at 7% grows to ~$430K by 45. Starting early matters more than the amount."},
-{label:"Invest Later (age 32)",desc:"Wait 10 years, then start investing.",prob:0.75,risk:"medium",salMul:1.0,debt:0,sav:0,inv:5000,sat:0,sec:5,grow:5,adapt:3,
+{label:"Invest Later (age 32)",desc:"Wait 10 years, then start investing.",prob:0.75,risk:"medium",common:true,salMul:1.0,debt:0,sav:0,inv:5000,sat:0,sec:5,grow:5,adapt:3,
 out:"10 years of missed compounding costs ~$380K in potential growth. You invest more per month to catch up, but time is the most valuable asset."},
 {label:"Don't Invest",desc:"Keep money in a checking account or under a mattress.",prob:0.30,risk:"very_high",salMul:1.0,debt:1000,sav:0,inv:0,sat:0,sec:-15,grow:-10,adapt:-5,
 out:"Inflation eats your savings at ~2.5%/year. Over 20 years, your purchasing power drops by 40%. Retirement becomes a crisis."}]},
@@ -332,7 +377,7 @@ out:"Inflation eats your savings at ~2.5%/year. Over 20 years, your purchasing p
 choices:[
 {label:"Start a Business",desc:"Launch your own company or startup.",prob:0.35,risk:"very_high",salMul:0.50,debt:20000,sav:0,inv:0,sat:15,sec:-15,grow:20,adapt:12,
 out:"High risk, high reward. 65% of startups fail in the first 5 years. Successful founders earn 5-10x more than employees. Freedom and impact unmatched."},
-{label:"Stable Employment",desc:"Work for an established company with benefits.",prob:0.85,risk:"very_low",salMul:1.0,debt:0,sav:3000,inv:2000,sat:0,sec:10,grow:5,adapt:3,
+{label:"Stable Employment",desc:"Work for an established company with benefits.",prob:0.85,risk:"very_low",common:true,salMul:1.0,debt:0,sav:3000,inv:2000,sat:0,sec:10,grow:5,adapt:3,
 out:"Steady paycheck, health insurance, 401(k) match. Predictable career ladder. Less freedom but reliable income. Average tenure: 3-5 years per employer."},
 {label:"Freelancing",desc:"Work independently, client by client.",prob:0.55,risk:"high",salMul:1.10,debt:0,sav:1000,inv:1000,sat:10,sec:-10,grow:8,adapt:12,
 out:"Freedom and flexibility but income volatility. No employer benefits. Top freelancers out-earn employees; most struggle."}]},
@@ -340,7 +385,7 @@ out:"Freedom and flexibility but income volatility. No employer benefits. Top fr
 choices:[
 {label:"Buy Property",desc:"Purchase a home with a mortgage.",prob:0.78,risk:"medium",salMul:1.0,debt:150000,sav:-10000,inv:15000,sat:10,sec:8,grow:5,adapt:-5,
 out:"Homeownership builds equity over time. Down payment drains savings, but the mortgage payment builds an asset. Property typically appreciates 3-5%/year."},
-{label:"Rent an Apartment",desc:"Continue renting, keep flexibility.",prob:0.85,risk:"very_low",salMul:1.0,debt:0,sav:2000,inv:3000,sat:3,sec:3,grow:5,adapt:10,
+{label:"Rent an Apartment",desc:"Continue renting, keep flexibility.",prob:0.85,risk:"very_low",common:true,salMul:1.0,debt:0,sav:2000,inv:3000,sat:3,sec:3,grow:5,adapt:10,
 out:"Renting preserves liquidity and flexibility. You can invest the difference. No maintenance costs, but no equity building either."},
 {label:"Live with Family",desc:"Stay with parents to save aggressively.",prob:0.90,risk:"very_low",salMul:1.0,debt:0,sav:8000,inv:5000,sat:-8,sec:12,grow:3,adapt:3,
 out:"Maximum savings rate. You can save $20K+/year. Financial independence comes faster, but social and personal growth may be limited."}]},
@@ -348,7 +393,7 @@ out:"Maximum savings rate. You can save $20K+/year. Financial independence comes
 choices:[
 {label:"Multiple Side Income Streams",desc:"Build 2-3 additional income sources.",prob:0.50,risk:"medium",salMul:1.40,debt:0,sav:5000,inv:3000,sat:-5,sec:10,grow:10,adapt:12,
 out:"Multiple income streams provide resilience. If one dries up, others sustain you. Higher total income but more time commitment and complexity."},
-{label:"Single Focused Salary",desc:"Focus all energy on your main career.",prob:0.80,risk:"low",salMul:1.15,debt:0,sav:3000,inv:2000,sat:5,sec:5,grow:8,adapt:3,
+{label:"Single Focused Salary",desc:"Focus all energy on your main career.",prob:0.80,risk:"low",common:true,salMul:1.15,debt:0,sav:3000,inv:2000,sat:5,sec:5,grow:8,adapt:3,
 out:"Deep specialization can lead to promotions and expertise. Single point of failure, but mastery has compounding career benefits."}]}];
 
 const ALL=[...EDUCATION,...ECONOMICS];
@@ -387,8 +432,36 @@ state=Object.assign(initialState(),keep);
 state.picks.forEach((p,i)=>{
 const sc=ALL[i];const ch=sc.choices[p.choiceIdx];
 applyChoiceEffects(ch,p.success);
-const entry={title:sc.title,choice:ch.label,success:p.success,category:sc.phase,editCount:p.editCount};
+const entry={title:sc.title,choice:ch.label,success:p.success,category:sc.phase,editCount:p.editCount,common:!!ch.common};
 state.log.push(entry);state.choices.push(entry)})}
+
+function isCommonPick(scIdx){
+const p=state.picks[scIdx];
+return !!(p&&ALL[scIdx].choices[p.choiceIdx].common)}
+
+function pressureLine(scIdx){
+const sc=ALL[scIdx];const p=state.picks[scIdx];
+if(!p)return"";
+const chosen=sc.choices[p.choiceIdx];
+if(chosen.common)return SOCIAL_PRESSURE.followed;
+const common=sc.choices.find(c=>c.common);
+if(!common)return"";
+return SOCIAL_PRESSURE.ownWayPrefix+`"${common.label}"`}
+
+function pressureStats(){
+const s={followed:0,total:state.picks.length,
+edu:{followed:0,total:0},econ:{followed:0,total:0}};
+state.choices.forEach(c=>{
+const phase=c.category==="edu"?"edu":"econ";
+s[phase].total++;
+if(c.common){s.followed++;s[phase].followed++}});
+return s}
+
+function pressureInsight(s){
+const t=SOCIAL_PRESSURE.thresholds;
+return s.followed>=t.high?SOCIAL_PRESSURE.insights.high
+:s.followed<=t.low?SOCIAL_PRESSURE.insights.low
+:SOCIAL_PRESSURE.insights.mid}
 
 function projectFuture(y){
 const sg=Math.pow(1.03,y);const infl=Math.pow(1+CONFIG.INFLATION,y);
@@ -433,6 +506,7 @@ app.innerHTML=`
 <div class="verdict-item"><span class="icon">📚</span><span><strong>5 Education Decisions</strong> — shape your skills, credentials, and career options</span></div>
 <div class="verdict-item"><span class="icon">💰</span><span><strong>5 Economics Decisions</strong> — shape your wealth, security, and financial freedom</span></div>
 <div class="verdict-item"><span class="icon">🎯</span><span><strong>Probability Engine</strong> — each choice has weighted success/failure outcomes</span></div>
+<div class="verdict-item"><span class="icon">👥</span><span><strong>Social Pressure</strong> — see how often you follow the common path vs. your own way</span></div>
 <div class="verdict-item"><span class="icon">📊</span><span><strong>Life Score</strong> — composite 0-100 score across 5 dimensions</span></div>
 <div class="verdict-item"><span class="icon">🔮</span><span><strong>20-Year Projection</strong> — see where your choices lead</span></div>
 </div></div>
@@ -464,14 +538,16 @@ let choicesHTML=sc.choices.map((ch,i)=>{
 const sel=pick&&pick.choiceIdx===i;
 let cls="choice-card fade-in stagger-"+(i+1);
 if(sel)cls+=" selected";else if(pick&&!correcting)cls+=" disabled";
+const tag=ch.common?`<span class="pressure-tag">${SOCIAL_PRESSURE.commonTag}</span>`:"";
 return`
 <div class="${cls}" data-idx="${i}" onclick="selectChoice(${state.current},${i})">
 <div class="choice-num">${i+1}</div>
 <div class="choice-body"><h4>${ch.label}</h4><div class="desc">${ch.desc}</div>
-<span class="risk-badge ${riskClass(ch.risk)}">Risk: ${riskLabel(ch.risk)}</span></div></div>`}).join("");
+<span class="risk-badge ${riskClass(ch.risk)}">Risk: ${riskLabel(ch.risk)}</span>${tag}</div></div>`}).join("");
 let outcomesHTML=sc.choices.map((ch,i)=>{
 if(pick&&pick.choiceIdx===i){const s=pick.success;
-return`<div class="outcome show ${s?"success":"fail"}" id="outcome-${i}">${s?"✓":"~"} <strong>${s?"Success!":"Partial outcome"}</strong> — ${ch.out}</div>`}
+return`<div class="outcome show ${s?"success":"fail"}" id="outcome-${i}">${s?"✓":"~"} <strong>${s?"Success!":"Partial outcome"}</strong> — ${ch.out}
+<div class="pressure-line">${pressureLine(state.current)}</div></div>`}
 return`<div class="outcome" id="outcome-${i}"></div>`}).join("");
 const nextLabel=state.current<total-1
 ?`Continue to ${ALL[state.current+1].phase==="edu"?"Education":"Economics"} Phase →`
@@ -533,6 +609,19 @@ state.picks[scIdx]={choiceIdx:p.choiceIdx,success,editCount:p.editCount+1};
 state.returnTo=null;
 recomputeState();render(false);
 if(success)confetti()}
+
+function renderSocialPressure(){
+const s=pressureStats();
+return`<div class="results-section fade-in"><div class="sec-head">${SOCIAL_PRESSURE.sectionTitle}</div><div class="sec-body">
+<div class="pressure-stats">
+<div class="pressure-big"><div class="num">${s.followed} <span class="of">/ ${s.total}</span></div>
+<div class="lbl">${SOCIAL_PRESSURE.bigLabel}</div></div>
+<div class="pressure-phase"><div class="lbl">${SOCIAL_PRESSURE.eduLabel}</div><div class="num">${s.edu.followed} / ${s.edu.total}</div></div>
+<div class="pressure-phase"><div class="lbl">${SOCIAL_PRESSURE.econLabel}</div><div class="num">${s.econ.followed} / ${s.econ.total}</div></div>
+</div>
+<p class="pressure-insight">${pressureInsight(s)}</p>
+<p class="pressure-hint">${SOCIAL_PRESSURE.hint}</p>
+</div></div>`}
 
 function renderResults(){
 const nw=getNetWorth();const p5=projectFuture(5);const p20=projectFuture(20);
@@ -608,11 +697,13 @@ ${state.log.map(l=>`<div class="log-entry ${l.success?'success':'partial'}">
 Based on your choices, your overall life trajectory is <strong>${grade.toLowerCase()}</strong>.
 Score: Financial 30%, Satisfaction 20%, Security 20%, Growth 15%, Adaptability 15%.</p></div></div></div>
 
+${renderSocialPressure()}
+
 <div class="results-section fade-in"><div class="sec-head">All Decisions Summary</div><div class="sec-body" style="overflow-x:auto">
 <table class="choices-table"><thead><tr><th>#</th><th>Category</th><th>Choice</th><th>Outcome</th></tr></thead>
 <tbody>${state.choices.map((c,i)=>`<tr class="clickable" title="Review &amp; correct this decision" onclick="enterCorrection(${i})"><td>${i+1}</td>
 <td><span class="cat-badge ${c.category}">${c.category==='edu'?'EDUCATION':'ECONOMICS'}</span></td>
-<td><strong>${c.choice}</strong>${c.editCount?`<span class="edit-badge">↻ ×${c.editCount}</span>`:""}</td>
+<td><strong>${c.choice}</strong>${c.editCount?`<span class="edit-badge">↻ ×${c.editCount}</span>`:""}<span class="pressure-badge" title="${c.common?"Common path":"Your own way"}">${c.common?"👥":"🌟"}</span></td>
 <td style="color:${c.success?'var(--green)':'var(--yellow)'}">${c.success?'Success':'Partial'}</td></tr>`).join("")}</tbody></table></div></div>
 
 <div class="results-section fade-in"><div class="sec-head">Final Verdict</div><div class="sec-body">
