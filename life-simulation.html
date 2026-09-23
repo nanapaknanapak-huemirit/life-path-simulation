@@ -231,6 +231,15 @@
         .stat-free{color:var(--green);font-weight:700}
         .stat-press{color:var(--purple);font-weight:700}
 
+        .name-input{
+            width:100%;padding:12px 14px;border-radius:8px;font-size:1rem;
+            background:var(--surface2);border:1px solid var(--border);
+            color:var(--text);outline:none;transition:border-color .2s;
+        }
+        .name-input:focus{border-color:var(--cyan)}
+        .name-row{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap}
+        .name-note{font-size:.75rem;color:var(--dim);margin-top:10px}
+
         .strengths,.concerns,.recommendations{margin-bottom:16px}
         .strengths h4{color:var(--green);margin-bottom:8px}
         .concerns h4{color:var(--red);margin-bottom:8px}
@@ -325,6 +334,25 @@ high:"Your path closely tracked the conventional route: few choices broke free o
 mid:"A balanced mix: you exercised free will where it mattered and went with the crowd where it suited you. Pressure influenced you without driving you.",
 low:"Most of your choices were made of your own free will — you rarely took the common path. Strong autonomy; just remember norms exist for a reason, too."}};
 
+const NAME_LAYER={
+title:"Who's walking this path?",
+label:"Your name",
+placeholder:"Enter your name — or leave empty to stay anonymous",
+anonymousBtn:"🎲 Give me an anonymous name",
+note:"Stored only on this device",
+forLabel:"stats for ",
+lastOn:"last run ",
+possessive:"'s",
+statsTitle:"Your Statistics",
+runsLabel:"Runs",bestLabel:"Best Score",avgLabel:"Average",lastLabel:"Last Run",
+peek:"{n} runs · best {score}",
+maxLen:24,maxRuns:50,
+nameKey:"lifePathName_v1",storageKey:"lifePathRuns_v1",
+adjectives:["Silent","Wandering","Crimson","Lucky","Hidden","Radiant","Curious","Midnight"],
+nouns:["Falcon","Ember","Willow","Comet","Otter","Sparrow","Drifter","Bloom"],
+anonPattern:"{adj} {noun} #{num}",anonNumMin:100,anonNumMax:999,
+dateOptions:{month:"short",day:"numeric"}};
+
 const EDUCATION=[
 {title:"High School Completion",phase:"edu",desc:"You are 18. Do you finish high school or leave early?",
 choices:[
@@ -407,7 +435,8 @@ const ALL=[...EDUCATION,...ECONOMICS];
 
 function initialState(){return{current:-1,salary:CONFIG.BASE_SALARY,debt:0,savings:0,investments:0,
 satisfaction:50,security:50,growth:50,adaptability:50,education:"high_school",
-log:[],choices:[],age:22,picks:[],corrections:0,returnTo:null}}
+log:[],choices:[],age:22,picks:[],corrections:0,returnTo:null,
+name:loadName(),runId:null}}
 let state=initialState();
 
 const fmt=n=>{if(Math.abs(n)>=1e6)return"$"+(n/1e6).toFixed(1)+"M";if(Math.abs(n)>=1e3)return"$"+(n/1e3).toFixed(0)+"K";return"$"+n.toLocaleString()};
@@ -416,6 +445,15 @@ const clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
 const rand=()=>Math.random();
 const riskClass=r=>r==="very_low"?"vlow":r==="low"?"low":r==="medium"?"med":r==="high"?"high":"vhigh";
 const riskLabel=r=>r.replace(/_/g," ");
+
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+function storageGet(key){try{return localStorage.getItem(key)}catch(e){return null}}
+function storageSet(key,val){try{localStorage.setItem(key,val)}catch(e){}}
+function loadName(){return storageGet(NAME_LAYER.nameKey)||""}
+function persistName(n){storageSet(NAME_LAYER.nameKey,n)}
+function loadRuns(){try{const r=JSON.parse(storageGet(NAME_LAYER.storageKey)||"[]");return Array.isArray(r)?r:[]}catch(e){return[]}}
+function saveRuns(runs){storageSet(NAME_LAYER.storageKey,JSON.stringify(runs))}
 
 function rollSuccess(ch){return rand()<ch.prob}
 
@@ -434,7 +472,8 @@ state.adaptability=clamp(state.adaptability+ch.adapt*0.5,0,100)}
 if(ch.edu)state.education=ch.edu}
 
 function recomputeState(){
-const keep={current:state.current,picks:state.picks,corrections:state.corrections,returnTo:state.returnTo};
+const keep={current:state.current,picks:state.picks,corrections:state.corrections,
+returnTo:state.returnTo,name:state.name,runId:state.runId};
 state=Object.assign(initialState(),keep);
 state.picks.forEach((p,i)=>{
 const sc=ALL[i];const ch=sc.choices[p.choiceIdx];
@@ -520,12 +559,37 @@ app.innerHTML=`
 <div class="verdict-item"><span class="icon">📊</span><span><strong>Life Score</strong> — composite 0-100 score across 5 dimensions</span></div>
 <div class="verdict-item"><span class="icon">🔮</span><span><strong>20-Year Projection</strong> — see where your choices lead</span></div>
 </div></div>
-<div class="btn-center"><button class="btn btn-primary" onclick="startSimulation()">Begin Your Journey</button></div>
+<div class="results-section" style="max-width:600px;margin:20px auto 0">
+<div class="sec-head" style="text-align:center">${NAME_LAYER.title}</div>
+<div class="sec-body">
+<input class="name-input" id="name-input" type="text" maxlength="${NAME_LAYER.maxLen}" placeholder="${NAME_LAYER.placeholder}" value="${esc(loadName())}" aria-label="${NAME_LAYER.label}">
+<div class="name-row"><button class="btn btn-outline" style="padding:8px 18px;font-size:.9rem" onclick="generateAnonymous()">${NAME_LAYER.anonymousBtn}</button></div>
+<div class="name-note">${NAME_LAYER.note}${welcomePeek()}</div>
+</div></div>
+<div class="btn-center"><button class="btn btn-primary" onclick="beginFromWelcome()">Begin Your Journey</button></div>
 <div style="text-align:center;margin-top:30px;padding:20px;border:1px solid var(--border);border-radius:12px;background:var(--surface)">
 <div style="color:var(--dim);font-size:.85rem;margin-bottom:10px">Scan to open on your phone</div>
 <img src="life-simulation-qr.svg" alt="QR Code" style="width:150px;height:150px;border-radius:8px;background:white;padding:8px">
 <div style="color:var(--dim);font-size:.75rem;margin-top:8px;word-break:break-all">nanapaknanapak-huemirit.github.io/life-path-simulation/life-simulation.html</div>
 </div>`}
+
+function generateAnonymousName(){
+const n=NAME_LAYER;
+const num=n.anonNumMin+Math.floor(rand()*(n.anonNumMax-n.anonNumMin+1));
+return n.anonPattern
+.replace("{adj}",n.adjectives[Math.floor(rand()*n.adjectives.length)])
+.replace("{noun}",n.nouns[Math.floor(rand()*n.nouns.length)])
+.replace("{num}",String(num))}
+
+function generateAnonymous(){
+const el=document.getElementById("name-input");
+if(el)el.value=generateAnonymousName()}
+
+function beginFromWelcome(){
+const el=document.getElementById("name-input");
+let n=el?el.value.trim().slice(0,NAME_LAYER.maxLen):"";
+if(!n)n=generateAnonymousName();
+state.name=n;persistName(n);startSimulation()}
 
 function renderProgress(){
 const total=ALL.length;const frontier=state.picks.length;
@@ -620,6 +684,30 @@ state.returnTo=null;
 recomputeState();render(false);
 if(success)confetti()}
 
+function saveRunRecord(){
+if(state.runId==null)return;
+const st=pressureStats();
+const rec={id:state.runId,name:state.name,score:Math.round(lifeScore()),
+corrections:state.corrections,freeWill:st.freeWill,followed:st.followed,ts:Date.now()};
+const runs=loadRuns();
+const i=runs.findIndex(r=>r.id===state.runId);
+if(i>=0)runs[i]=rec;else runs.push(rec);
+while(runs.length>NAME_LAYER.maxRuns)runs.shift();
+saveRuns(runs)}
+
+function runStats(){
+const runs=loadRuns();
+if(!runs.length)return null;
+const scores=runs.map(r=>r.score);
+return{count:runs.length,best:Math.max.apply(null,scores),
+avg:Math.round(scores.reduce((x,y)=>x+y,0)/scores.length),
+last:runs[runs.length-1]}}
+
+function welcomePeek(){
+const s=runStats();
+if(!s)return"";
+return" · "+NAME_LAYER.peek.replace("{n}",s.count).replace("{score}",s.best)}
+
 function renderSocialPressure(){
 const s=pressureStats();const sp=SOCIAL_PRESSURE;
 const phaseCard=(label,d)=>`<div class="pressure-phase"><div class="lbl">${label}</div>
@@ -637,7 +725,23 @@ ${phaseCard(sp.eduLabel,s.edu)}${phaseCard(sp.econLabel,s.econ)}
 <p class="pressure-hint">${sp.hint}</p>
 </div></div>`}
 
+function renderYourStatistics(){
+const runs=loadRuns();
+if(!runs.length||!runs.some(r=>r.id===state.runId))return"";
+const s=runStats();const nl=NAME_LAYER;const last=s.last;
+const lastDate=new Date(last.ts).toLocaleDateString(undefined,nl.dateOptions);
+return`<div class="results-section fade-in"><div class="sec-head">${nl.statsTitle}</div><div class="sec-body">
+<div class="stat-grid">
+<div class="stat-card"><div class="label">${nl.runsLabel}</div><div class="value neu">${s.count}</div></div>
+<div class="stat-card"><div class="label">${nl.bestLabel}</div><div class="value pos">${s.best}</div></div>
+<div class="stat-card"><div class="label">${nl.avgLabel}</div><div class="value neu">${s.avg}</div></div>
+<div class="stat-card"><div class="label">${nl.lastLabel}</div><div class="value neu">${last.score}</div></div>
+</div>
+<div class="name-note" style="margin-top:12px">${nl.note} · ${nl.forLabel}${esc(state.name)} · ${nl.lastOn}${lastDate}</div>
+</div></div>`}
+
 function renderResults(){
+saveRunRecord();
 const nw=getNetWorth();const p5=projectFuture(5);const p20=projectFuture(20);
 const score=lifeScore();const scoreInt=Math.round(score);const maxNW=Math.max(p5.netWorth,p20.netWorth,1);
 let grade,gradeCls;if(score>=75){grade="EXCELLENT";gradeCls="excellent"}
@@ -660,7 +764,7 @@ if(state.investments<10000)recs.push("Consider starting investments — compound
 if(state.adaptability<40)recs.push("Invest in learning to stay competitive in a changing job market.");
 
 app.innerHTML=`${renderProgress()}
-<div class="results-section fade-in"><div class="sec-head" style="display:flex;justify-content:space-between;align-items:center"><span>Prediction Log</span><span class="edit-badge" style="margin:0">↻ ${state.corrections} correction${state.corrections===1?"":"s"}</span></div><div class="sec-body">
+<div class="results-section fade-in"><div class="sec-head" style="display:flex;justify-content:space-between;align-items:center"><span>${state.name?esc(state.name)+NAME_LAYER.possessive+" ":""}Prediction Log</span><span class="edit-badge" style="margin:0">↻ ${state.corrections} correction${state.corrections===1?"":"s"}</span></div><div class="sec-body">
 ${state.log.map(l=>`<div class="log-entry ${l.success?'success':'partial'}">
 <span class="icon">${l.success?'✓':'~'}</span>
 <span>${l.title}: <strong>${l.choice}</strong> — ${l.success?'Success':'Partial'}${l.editCount?`<span class="edit-badge">↻ ×${l.editCount}</span>`:""}</span></div>`).join("")}</div></div>
@@ -700,7 +804,7 @@ ${state.log.map(l=>`<div class="log-entry ${l.success?'success':'partial'}">
 <div class="traj-bar-wrap"><div class="traj-bar yr20" style="width:${Math.max(2,p20.netWorth/maxNW*100)}%">${fmt(p20.netWorth)}</div></div></div>
 </div></div></div>
 
-<div class="results-section fade-in stagger-3"><div class="sec-head">Life Score Assessment</div><div class="sec-body">
+<div class="results-section fade-in stagger-3"><div class="sec-head">${state.name?esc(state.name)+NAME_LAYER.possessive+" ":""}Life Score Assessment</div><div class="sec-body">
 <div class="score-display"><div class="score-ring">
 <svg width="160" height="160" viewBox="0 0 160 160">
 <circle class="track" cx="80" cy="80" r="68"/>
@@ -712,6 +816,8 @@ Based on your choices, your overall life trajectory is <strong>${grade.toLowerCa
 Score: Financial 30%, Satisfaction 20%, Security 20%, Growth 15%, Adaptability 15%.</p></div></div></div>
 
 ${renderSocialPressure()}
+
+${renderYourStatistics()}
 
 <div class="results-section fade-in"><div class="sec-head">All Decisions Summary</div><div class="sec-body" style="overflow-x:auto">
 <table class="choices-table"><thead><tr><th>#</th><th>Category</th><th>Choice</th><th>Outcome</th></tr></thead>
@@ -739,7 +845,8 @@ ${recs.length?`<div class="recommendations"><h4>Recommendations</h4>${recs.map(s
 
 function resetSimulation(){state=initialState();render()}
 
-function startSimulation(){state.current=0;render();setTimeout(confetti,300)}
+let runSeq=0;
+function startSimulation(){state.runId=Date.now()+"-"+(++runSeq);state.current=0;render();setTimeout(confetti,300)}
 
 render();
 </script>
